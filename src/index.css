@@ -5,6 +5,7 @@
 
 @layer base {
   :root {
+    color-scheme: dark;
     /* Dark Mode - Default per instructions */
     --bg-base: #0F1117;
     --bg-sidebar: #13151C;
@@ -60,6 +61,12 @@
 
   body {
     @apply bg-base text-text-main font-sans antialiased transition-colors duration-200;
+  }
+
+  /* Fix for transparent/white options in some browsers */
+  select option {
+    background-color: #1A1D27;
+    color: #E8EAF0;
   }
 
   button, a, [role="button"], input[type="checkbox"], input[type="radio"], select, .cursor-pointer {
