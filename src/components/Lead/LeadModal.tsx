@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'   // ← CORRIGIDO: era supabaseAdmin, faltava supabase
+import { supabase, supabaseAdmin } from '../../lib/supabase'
 import type { Lead } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
@@ -84,7 +84,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
 
       // ── NOVO: Verificar duplicata de WhatsApp antes de inserir ──
       if (!lead) {
-        const { data: existing } = await supabase
+        const { data: existing } = await supabaseAdmin
           .from('leads')
           .select('id, nome')
           .eq('whatsapp', formData.whatsapp.replace(/\D/g, ''))
@@ -110,8 +110,8 @@ export const LeadModal: React.FC<LeadModalProps> = ({
       }
 
       const response: any = lead
-        ? await supabase.from('leads').update(payload).eq('id', lead.id).select().single()
-        : await supabase.from('leads').insert([payload]).select().single()
+        ? await supabaseAdmin.from('leads').update(payload).eq('id', lead.id).select().single()
+        : await supabaseAdmin.from('leads').insert([payload]).select().single()
 
       if (response.error) {
         // Trata o erro de chave duplicada vindo do banco (fallback)

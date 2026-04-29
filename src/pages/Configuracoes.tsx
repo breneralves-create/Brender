@@ -41,10 +41,10 @@ export const Configuracoes: React.FC = () => {
 
   // Score
   const [scoreConfigLocal, setScoreConfigLocal] = useState<LeadScoreConfig>({
-    id: 1,
-    score_minimo_morno: 40,
-    score_minimo_quente: 70,
-    updated_at: ''
+    id: scoreConfig?.id || '',
+    score_minimo_morno: scoreConfig?.score_minimo_morno || 40,
+    score_minimo_quente: scoreConfig?.score_minimo_quente || 70,
+    updated_at: scoreConfig?.updated_at || ''
   })
 
   // Horários
@@ -126,7 +126,7 @@ export const Configuracoes: React.FC = () => {
     const { error } = await supabase
       .from('company_config')
       .update({ nome: companyName })
-      .eq('id', 1)
+      .eq('id', company?.id)
     setIsSaving(false)
     if (error) triggerToast('error')
     else { refreshCompany(); triggerToast('success') }
@@ -140,7 +140,7 @@ export const Configuracoes: React.FC = () => {
         score_minimo_morno: scoreConfigLocal.score_minimo_morno,
         score_minimo_quente: scoreConfigLocal.score_minimo_quente
       })
-      .eq('id', 1)
+      .eq('id', scoreConfig?.id)
     setIsSaving(false)
     if (error) triggerToast('error')
     else { refreshCompany(); triggerToast('success') }
@@ -173,7 +173,7 @@ export const Configuracoes: React.FC = () => {
       const { error: uploadError } = await supabase.storage.from('company-assets').upload(filePath, file)
       if (uploadError) throw uploadError
       const { data: { publicUrl } } = supabase.storage.from('company-assets').getPublicUrl(filePath)
-      const { error: updateError } = await supabase.from('company_config').update({ logo_url: publicUrl }).eq('id', 1)
+      const { error: updateError } = await supabase.from('company_config').update({ logo_url: publicUrl }).eq('id', company?.id)
       if (updateError) throw updateError
       setLogoPreview(publicUrl)
       refreshCompany()
@@ -269,7 +269,7 @@ export const Configuracoes: React.FC = () => {
                     <Button
                       variant="ghost" size="sm"
                       onClick={async () => {
-                        const { error } = await supabase.from('company_config').update({ logo_url: null }).eq('id', 1)
+                        const { error } = await supabase.from('company_config').update({ logo_url: null }).eq('id', company?.id)
                         if (!error) { setLogoPreview(null); refreshCompany() }
                       }}
                       className="text-error hover:bg-error/10"

@@ -18,7 +18,7 @@ import {
 } from 'recharts'
 import { format, subDays, startOfMonth, endOfMonth, startOfDay, endOfDay, eachDayOfInterval, subMonths, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseAdmin } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -45,10 +45,10 @@ export const Dashboard: React.FC = () => {
   const [leadToDelete, setLeadToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
-  // ✅ CORREÇÃO: range inicial abrange tudo
+  // ✅ FIX: Range inicial padrão é o mês atual para evitar processar milhares de dias
   const [dateRange, setDateRange] = useState({
-    from: new Date(2000, 0, 1),
-    to: new Date(2100, 0, 1)
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date())
   })
 
   useEffect(() => {
@@ -68,13 +68,15 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('leads')
         .select('*')
+        .order('horario_contato', { ascending: false })
       
       if (error) throw error
       
       if (data) {
+        console.log('📊 Dashboard: Leads carregados com sucesso:', data.length)
         setLeads(data as Lead[])
       }
     } catch (err) {
@@ -110,7 +112,7 @@ export const Dashboard: React.FC = () => {
     
     setIsDeleting(true)
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('leads')
         .delete()
         .eq('id', leadToDelete)

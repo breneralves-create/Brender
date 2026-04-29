@@ -72,7 +72,7 @@ export const Leads: React.FC = () => {
   const fetchLeads = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('leads')
         .select('*')
         .order('horario_contato', { ascending: false })
@@ -82,7 +82,9 @@ export const Leads: React.FC = () => {
       if (data) setLeads(data as Lead[])
 
       if (data && data.length === 0) {
-        console.warn('O banco retornou ZERO leads. Verifique o RLS ou se você está logado.')
+        console.warn('⚠️ LEADS: O banco retornou ZERO leads. Isso pode ser RLS ou falta de dados.')
+      } else {
+        console.log('✅ LEADS: Recebidos', data?.length, 'leads do banco.')
       }
     } catch (err: any) {
       console.error('Erro ao buscar leads:', err)

@@ -31,8 +31,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: companyData } = await supabaseAdmin
         .from('company_config')
         .select('*')
-        .eq('id', 1)
-        .single()
+        .limit(1)
+        .maybeSingle()
 
       if (companyData) setCompany(companyData)
 
@@ -55,8 +55,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: scoreData } = await supabaseAdmin
         .from('lead_score_config')
         .select('*')
-        .eq('id', 1)
-        .single()
+        .limit(1)
+        .maybeSingle()
 
       if (scoreData) setScoreConfig(scoreData)
       else setScoreConfig(DEFAULT_SCORE_CONFIG)
