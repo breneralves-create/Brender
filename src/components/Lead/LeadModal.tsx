@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase, supabaseAdmin } from '../../lib/supabase'
+import { supabaseAdmin } from '../../lib/supabase'
 import type { Lead } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'

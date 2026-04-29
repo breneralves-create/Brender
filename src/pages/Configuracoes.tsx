@@ -41,7 +41,7 @@ export const Configuracoes: React.FC = () => {
 
   // Score
   const [scoreConfigLocal, setScoreConfigLocal] = useState<LeadScoreConfig>({
-    id: scoreConfig?.id || '',
+    id: scoreConfig?.id || 0,
     score_minimo_morno: scoreConfig?.score_minimo_morno || 40,
     score_minimo_quente: scoreConfig?.score_minimo_quente || 70,
     updated_at: scoreConfig?.updated_at || ''
