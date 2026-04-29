@@ -5,6 +5,7 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCompany } from '../../contexts/CompanyContext'
 
 interface LeadModalProps {
   isOpen: boolean
@@ -30,6 +31,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   lead
 }) => {
   const { user } = useAuth()
+  const { businessHours } = useCompany()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -63,6 +65,24 @@ export const LeadModal: React.FC<LeadModalProps> = ({
       })
     }
   }, [lead, isOpen])
+
+  const checkBusinessHours = (date: Date) => {
+    if (!businessHours || businessHours.length === 0) return true
+
+    const daysMap: Record<number, string> = {
+      0: 'domingo', 1: 'segunda', 2: 'terca', 3: 'quarta', 4: 'quinta', 5: 'sexta', 6: 'sabado'
+    }
+    const currentDay = daysMap[date.getDay()]
+    const config = businessHours.find(h => h.dia === currentDay)
+
+    if (!config || !config.aberto) return false
+
+    const currentTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    
+    if (!config.hora_inicio || !config.hora_fim) return true
+
+    return currentTime >= config.hora_inicio && currentTime <= config.hora_fim
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,6 +125,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
         whatsapp: formData.whatsapp.replace(/\D/g, ''), // salva só números
         status: lead ? lead.status : 'novo_contato',
         horario_contato: lead?.horario_contato ?? new Date().toISOString(),
+        dentro_horario_comercial: checkBusinessHours(lead ? new Date(lead.horario_contato) : new Date()),
         encaminhado_vendedor: lead ? lead.encaminhado_vendedor : false,
         usuario_id: lead ? lead.usuario_id : user?.id
       }
@@ -178,7 +199,11 @@ export const LeadModal: React.FC<LeadModalProps> = ({
               onChange={handleChange}
               className="w-full bg-bg-base border border-border-card rounded-button px-4 py-2.5 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
             >
-              {ORIGENS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {ORIGENS.map(o => (
+                <option key={o.value} value={o.value} className="bg-[#1a1c24] text-white">
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>
