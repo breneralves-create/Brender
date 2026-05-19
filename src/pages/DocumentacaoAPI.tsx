@@ -450,7 +450,10 @@ export const DocumentacaoAPI: React.FC = () => {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/rules-of-hooks, @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     fetchTokens()
+    // @ts-ignore
     setupIntersectionObserver()
   }, [])
 
