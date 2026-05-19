@@ -317,7 +317,7 @@ const CodeBlock: React.FC<{ code: string, title?: string, language?: string, typ
           // For a production app, a lib like Prism or Shiki is better, 
           // but here we follow specific styling rules from the prompt.
           
-          let elements: React.ReactNode[] = []
+          const elements: React.ReactNode[] = []
           let currentPos = 0
           
           // Regex for:
@@ -400,11 +400,6 @@ export const DocumentacaoAPI: React.FC = () => {
 
   const baseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://projeto.supabase.co') + '/functions/v1'
 
-  useEffect(() => {
-    fetchTokens()
-    setupIntersectionObserver()
-  }, [])
-
   const fetchTokens = async () => {
     const { data } = await supabase
       .from('api_tokens')
@@ -453,6 +448,11 @@ export const DocumentacaoAPI: React.FC = () => {
 
     return () => observer.disconnect()
   }
+
+  useEffect(() => {
+    fetchTokens()
+    setupIntersectionObserver()
+  }, [])
 
   const maskedToken = useMemo(() => {
     if (!selectedToken) return '{TOKEN}'
