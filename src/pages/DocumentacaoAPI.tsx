@@ -8,13 +8,16 @@ import {
   Code2, 
   AlertCircle,
   Hash,
-  Info
+  Info,
+  Plus
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
+import { Modal } from '../components/ui/Modal'
+import { Input } from '../components/ui/Input'
 import type { ApiToken } from '../types'
 
 // --- Types & Interfaces ---
@@ -389,6 +392,12 @@ export const DocumentacaoAPI: React.FC = () => {
   const [tokens, setTokens] = useState<ApiToken[]>([])
   const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null)
   const [activeSection, setActiveSection] = useState('')
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false)
+  const [isRevealTokenModalOpen, setIsRevealTokenModalOpen] = useState(false)
+  const [newTokenLabel, setNewTokenLabel] = useState('')
+  const [revealedToken, setRevealedToken] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
   const baseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://projeto.supabase.co') + '/functions/v1'
 
   useEffect(() => {
@@ -406,6 +415,25 @@ export const DocumentacaoAPI: React.FC = () => {
     if (data) {
       setTokens(data)
       if (data.length > 0) setSelectedToken(data[0])
+    }
+  }
+
+  const generateToken = async () => {
+    if (!newTokenLabel) return
+    setIsSaving(true)
+    const rawToken = `tk_prod_${crypto.randomUUID().replace(/-/g, '')}`
+    const { error } = await supabase.from('api_tokens').insert({
+      label: newTokenLabel,
+      token_hash: rawToken,
+      ativo: true
+    })
+    setIsSaving(false)
+    if (!error) {
+      setRevealedToken(rawToken)
+      setIsTokenModalOpen(false)
+      setIsRevealTokenModalOpen(true)
+      setNewTokenLabel('')
+      fetchTokens()
     }
   }
 
@@ -556,8 +584,13 @@ export const DocumentacaoAPI: React.FC = () => {
         <Card className="p-8 border-primary bg-primary/5 shadow-lg shadow-primary/5">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
-                 <label className="text-xs font-black uppercase text-text-muted tracking-widest flex items-center gap-2">
-                   <Hash size={14} className="text-primary" /> Token Ativo
+                 <label className="text-xs font-black uppercase text-text-muted tracking-widest flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Hash size={14} className="text-primary" /> Token Ativo
+                   </div>
+                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setIsTokenModalOpen(true)}>
+                     <Plus size={12} className="mr-1" /> NOVO
+                   </Button>
                  </label>
                  <select 
                     className="w-full bg-bg-base border border-border-card rounded-button px-4 py-3 text-text-main focus:ring-2 focus:ring-primary/20 outline-none font-medium"
@@ -645,6 +678,53 @@ export const DocumentacaoAPI: React.FC = () => {
            </div>
         </div>
       </div>
+
+      {/* Modal: Gerar Token */}
+      <Modal isOpen={isTokenModalOpen} onClose={() => setIsTokenModalOpen(false)} title="Gerar Novo Token de API">
+        <div className="space-y-4">
+          <Input
+            label="Label do Token"
+            placeholder="Ex: N8N Produção"
+            value={newTokenLabel}
+            onChange={e => setNewTokenLabel(e.target.value)}
+          />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="ghost" onClick={() => setIsTokenModalOpen(false)}>Cancelar</Button>
+            <Button onClick={generateToken} isLoading={isSaving}>Gerar Token</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Revelar Token */}
+      <Modal isOpen={isRevealTokenModalOpen} onClose={() => setIsRevealTokenModalOpen(false)} title="Token Gerado com Sucesso!">
+        <div className="space-y-6">
+          <div className="bg-warning/10 border border-warning/20 p-4 rounded-lg flex items-start gap-4 text-warning">
+            <AlertCircle size={24} className="flex-shrink-0" />
+            <p className="text-sm font-medium">
+              Copie agora — este token não será exibido novamente por motivos de segurança.
+            </p>
+          </div>
+          <div className="relative group">
+            <div className="bg-bg-base border border-border-card p-4 rounded-lg font-mono text-primary break-all pr-14 text-sm">
+              {revealedToken}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(revealedToken)
+                // Usar a mesma lógica de "copied" do CodeBlock seria o ideal, mas por simplicidade:
+                alert("Token copiado para a área de transferência!")
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-text-muted hover:text-primary transition-colors"
+            >
+              <Copy size={20} />
+            </button>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setIsRevealTokenModalOpen(false)}>Entendido, Fechar</Button>
+          </div>
+        </div>
+      </Modal>
+
     </Layout>
   )
 }
