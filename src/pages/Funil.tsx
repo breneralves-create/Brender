@@ -8,27 +8,29 @@ import type { DropResult } from '@hello-pangea/dnd'
 import { 
   Search,
   Zap,
-  Flame
+  Flame,
+  User,
+  Phone,
+  Tag
 } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { supabase, supabaseAdmin } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
 import type { Lead, LeadStatus } from '../types'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Input } from '../components/ui/Input'
-import { ScoreBar } from '../components/ui/ScoreBar'
 import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
+import { LeadTemperature } from '../components/ui/LeadTemperature'
 
-const COLUMNS: { id: LeadStatus; title: string, color: string, glow: string }[] = [
-  { id: 'novo_contato', title: 'NOVO CONTATO', color: 'border-blue-400/30', glow: 'shadow-blue-500/5' },
-  { id: 'em_qualificacao', title: 'EM QUALIFICAÇÃO', color: 'border-cyan-400/30', glow: 'shadow-cyan-400/5' },
-  { id: 'primeiro_contato', title: '1º CONTATO', color: 'border-indigo-400/30', glow: 'shadow-indigo-400/5' },
-  { id: 'proposta_enviada', title: 'PROPOSTA ENVIADA', color: 'border-purple-400/30', glow: 'shadow-purple-400/5' },
-  { id: 'follow_up', title: 'FOLLOW-UP', color: 'border-amber-500/30', glow: 'shadow-amber-500/5' },
-  { id: 'encaminhado', title: 'ENCAMINHADO', color: 'border-violet-600/30', glow: 'shadow-violet-600/5' },
-  { id: 'convertido', title: 'CONVERTIDO', color: 'border-emerald-500/40', glow: 'shadow-emerald-500/10' },
-  { id: 'fora_horario', title: 'FORA DO HORÁRIO', color: 'border-white/5', glow: 'shadow-white/0' }
+const COLUMNS: { id: LeadStatus; title: string, hexColor: string }[] = [
+  { id: 'novo_contato', title: 'Novo Contato', hexColor: '#3b82f6' },
+  { id: 'em_qualificacao', title: 'Em Qualificação', hexColor: '#06b6d4' },
+  { id: 'follow_up', title: 'Follow Up', hexColor: '#f59e0b' },
+  { id: 'encaminhado', title: 'Encaminhado', hexColor: '#8b5cf6' },
+  { id: 'convertido', title: 'Convertido', hexColor: '#10b981' }
 ]
 
 export const Funil: React.FC = () => {
@@ -114,60 +116,67 @@ export const Funil: React.FC = () => {
     return filteredLeads.filter(l => l.status === status)
   }
 
+  const formatWhatsApp = (num: string) => {
+    const cleaned = num.replace(/\D/g, '')
+    if (cleaned.length === 11) {
+      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7)}`
+    }
+    return num
+  }
+
   return (
-    <Layout title="Funil Kanban">
-      <div className="space-y-6 flex flex-col h-[calc(100vh-140px)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+    <Layout title="Funil de Vendas">
+      <div className="space-y-4 flex flex-col h-[calc(100vh-140px)]">
+        {/* Barra Superior - Estilo Clean */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-bg-card p-4 border border-border-card rounded-md shadow-sm">
           <div className="relative w-full max-w-md group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
             <Input 
-              className="pl-10 bg-bg-card/50 border-border-card focus:border-primary/50 transition-all shadow-blue-500/5 group-focus-within:shadow-primary/10" 
-              placeholder="Pesquisar leads no funil..." 
+              className="pl-9 h-9 text-sm bg-bg-base border-border-card focus:border-primary/50 transition-all rounded-md" 
+              placeholder="Buscar no funil..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5 bg-success/10 px-4 py-2 rounded-full border border-success/20 animate-pulse-hot shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-              <div className="relative">
-                <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_rgba(34,197,94,0.8)] animate-blink-fast" />
-                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-success animate-ping opacity-40" />
-              </div>
-              <span className="text-[11px] font-black text-success uppercase tracking-[0.2em] leading-none">AO VIVO</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-success/10 px-3 py-1.5 rounded-md border border-success/20">
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              <span className="text-[11px] font-bold text-success uppercase tracking-wider">Ao Vivo</span>
             </div>
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-[10px] text-text-muted font-black uppercase tracking-widest">Sincronização</span>
-              <span className="text-[9px] text-success/70 font-bold uppercase tracking-tighter">Equipe Prospecção Ativa</span>
-            </div>
+            <span className="text-xs text-text-muted">|</span>
+            <span className="text-[11px] text-text-muted uppercase font-semibold">Total: {filteredLeads.length} Oportunidades</span>
           </div>
         </div>
 
-        <div className="flex-1 overflow-x-auto min-h-0 custom-scrollbar">
+        {/* Board Kanban */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-bg-base/30 rounded-md p-4 border border-border-card">
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex gap-4 h-full min-w-max pb-4 px-1">
+            <div className="flex gap-4 h-full min-w-max pb-2">
               {COLUMNS.map((col) => (
-                <div key={col.id} className={`flex flex-col w-[260px] min-w-[260px] bg-bg-card/20 rounded-2xl border-2 ${col.color || 'border-border-card'} ${col.glow || ''} overflow-hidden group/col backdrop-blur-sm transition-all duration-300 hover:bg-bg-card/30`}>
-                  {/* Column Header */}
-                  <div className={`p-4 flex items-center justify-between bg-bg-card/40 border-b border-border-card transition-all group-hover/col:bg-bg-card/60`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${col.color?.split(' ')[0].replace('border-', 'bg-')} shadow-[0_0_8px_currentColor]`} />
-                       <h3 className="text-[10px] font-black text-text-main font-heading tracking-[0.15em] uppercase transition-colors">
+                <div key={col.id} className="flex flex-col w-[300px] min-w-[300px] bg-[#1a1c24] rounded-md border border-[#2b2d35] overflow-hidden flex-shrink-0">
+                  {/* Cabeçalho da Coluna Sólido e Limpo */}
+                  <div 
+                    className="px-4 py-3 flex items-center justify-between border-b border-[#2b2d35]"
+                    style={{ borderTop: `4px solid ${col.hexColor}` }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-text-main tracking-tight">
                         {col.title}
                       </h3>
                     </div>
-                    <Badge variant="muted" className="text-[10px] tabular-nums font-bold bg-bg-base/50">
+                    <span className="bg-[#2b2d35] text-text-muted text-xs font-bold px-2 py-0.5 rounded-full">
                       {getLeadsByStatus(col.id).length}
-                    </Badge>
+                    </span>
                   </div>
 
-                  {/* Droppable Area */}
+                  {/* Área Soltável (Droppable) */}
                   <Droppable droppableId={col.id}>
                     {(provided, snapshot) => (
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`flex-1 p-3 space-y-4 overflow-y-auto transition-colors custom-scrollbar ${
-                          snapshot.isDraggingOver ? 'bg-primary/5' : ''
+                        className={`flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar transition-colors ${
+                          snapshot.isDraggingOver ? 'bg-[#2b2d35]/30' : ''
                         }`}
                       >
                         {getLeadsByStatus(col.id).map((lead, index) => (
@@ -177,67 +186,50 @@ export const Funil: React.FC = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className="group/card"
                                 onClick={() => setSelectedLead(lead)}
+                                className={`
+                                  bg-bg-card p-3 rounded-md border border-[#2b2d35] shadow-sm
+                                  hover:border-[#40434f] hover:shadow-md cursor-pointer transition-all
+                                  ${snapshot.isDragging ? 'rotate-1 scale-[1.02] border-primary ring-1 ring-primary/20 shadow-xl' : ''}
+                                  group relative
+                                `}
                               >
-                                <Card className={`
-                                  relative p-4 space-y-3 bg-bg-card/90 border-l-[3px] transition-all cursor-grab active:cursor-grabbing
-                                  hover:bg-bg-card hover:translate-y-[-4px] group/card
-                                  ${col.color} 
-                                  ${snapshot.isDragging ? 'rotate-2 scale-105 shadow-2xl border-primary ring-1 ring-primary/40 !bg-bg-card' : ''}
-                                  ${lead.score && lead.score > 80 ? 'ring-1 ring-primary/30 !shadow-[0_0_20px_-5px_rgba(0,200,150,0.3)]' : ''}
-                                `}>
-                                  {/* Dynamic Background Glow for high score */}
-                                  {lead.score && lead.score > 80 && (
-                                    <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-                                  )}
+                                {/* Indicador lateral discreto de Score/Hot */}
+                                {lead.score && lead.score > 80 && (
+                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-hot rounded-l-md" />
+                                )}
 
-                                  {/* Scanning Line Effect */}
-                                  {lead.score && lead.score > 90 && (
-                                    <div className="absolute left-0 right-0 h-[1px] bg-primary/40 shadow-[0_0_8px_rgba(0,200,150,0.8)] z-20 animate-scan pointer-events-none opacity-50" />
-                                  )}
-
-                                  {/* Constant shimmer for hot leads */}
-                                  {lead.score && lead.score > 70 && (
-                                    <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-                                      <div className="absolute inset-x-0 h-[200%] w-[150px] bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[200px] rotate-[35deg] animate-shimmer" />
-                                    </div>
-                                  )}
-
-                                  <div className="relative z-10">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <p className="text-sm font-black text-text-main leading-tight group-hover/card:text-primary transition-colors truncate">
+                                <div className="space-y-2">
+                                  {/* Nome e Ação */}
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <User size={14} className="text-text-muted flex-shrink-0" />
+                                      <p className="text-sm font-semibold text-text-main truncate group-hover:text-primary transition-colors">
                                         {lead.nome || lead.whatsapp}
                                       </p>
-                                      {lead.score && lead.score > 85 ? (
-                                        <Zap size={14} className="text-hot animate-blink-fast flex-shrink-0" />
-                                      ) : lead.score && lead.score > 60 && (
-                                        <Flame size={14} className="text-hot/70 flex-shrink-0" />
-                                      )}
                                     </div>
-                                    <div className="flex items-center gap-1.5 mt-2">
-                                      <div className={`w-1.5 h-1.5 rounded-full ${lead.dentro_horario_comercial ? 'bg-success shadow-[0_0_5px_var(--success)]' : 'bg-error shadow-[0_0_5px_var(--error)]'}`} />
-                                      <p className="text-[10px] text-text-muted font-medium truncate">
-                                        {lead.produto_interesse || 'Analizando interesse...'}
-                                      </p>
-                                    </div>
+                                    {lead.score && lead.score > 80 && (
+                                      <Flame size={14} className="text-hot flex-shrink-0" />
+                                    )}
                                   </div>
 
-                                  <div className="flex justify-between items-end pt-1 relative z-10">
-                                    <div className="flex flex-col gap-1.5 w-full mr-4">
-                                      <div className="flex items-center justify-between">
-                                        <span className={`text-[9px] font-black leading-none tabular-nums tracking-tighter ${lead.score && lead.score > 80 ? 'text-primary animate-pulse' : 'text-text-muted'}`}>
-                                          LIT SCORE: {lead.score || 0}%
-                                        </span>
-                                        {lead.temperatura === 'quente' && <span className="text-[8px] bg-hot/10 text-hot px-1.5 rounded font-black italic">HOT</span>}
-                                      </div>
-                                      <ScoreBar score={lead.score || 0} className="w-full h-1.5 rounded-full bg-bg-base/50" />
-                                    </div>
-                                    <Badge variant="muted" className="text-[8px] h-4 py-0 px-2 font-bold uppercase tracking-wider bg-bg-base/80 border border-border-card/50">
-                                      {lead.origem || 'Direto'}
-                                    </Badge>
+                                  {/* Produto / Valor */}
+                                  <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                    <Tag size={12} className="flex-shrink-0" />
+                                    <span className="truncate">{lead.produto_interesse || 'Nenhum produto listado'}</span>
                                   </div>
-                                </Card>
+
+                                  {/* Badges Info */}
+                                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-[#2b2d35]">
+                                    <div className="flex items-center gap-2">
+                                      <LeadTemperature temperature={lead.temperatura} className="text-[10px] py-0.5 px-1.5 h-auto rounded" />
+                                    </div>
+                                    <div className="text-[10px] text-text-muted flex flex-col items-end">
+                                      <span className="font-semibold text-text-main/70">{lead.score || 0}% Score</span>
+                                      <span className="italic">{formatDistanceToNow(new Date(lead.horario_contato || lead.created_at || new Date()), { addSuffix: true, locale: ptBR })}</span>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </Draggable>
