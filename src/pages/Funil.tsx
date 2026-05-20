@@ -115,17 +115,22 @@ export const Funil: React.FC = () => {
   )
 
   const getEffectiveStatus = (lead: Lead): LeadStatus => {
-    let s = lead.status;
+    let s = lead.status || 'novo_contato';
     
-    // Mapeamento de status legados/ocultos para as 5 colunas base
-    if (s === 'fora_horario' || s === 'primeiro_contato') s = 'novo_contato';
-    if (s === 'proposta_enviada' || s === 'quente' || s === 'morno' || s === 'frio' || s === 'sem_interesse') s = 'em_qualificacao';
-
-    // Prioridade para as flags booleanas se estiverem true
+    // Prioridade máxima para as flags booleanas
     if (lead.convertido) return 'convertido';
-    if (lead.encaminhado_vendedor && s === 'novo_contato') return 'encaminhado';
+    if (lead.encaminhado_vendedor) return 'encaminhado';
 
-    return s;
+    // Mapeamento de status legados/ocultos
+    if (s === 'fora_horario' || s === 'primeiro_contato') s = 'novo_contato';
+    else if (s === 'proposta_enviada' || s === 'quente' || s === 'morno' || s === 'frio' || s === 'sem_interesse') s = 'em_qualificacao';
+
+    const validCols = ['novo_contato', 'em_qualificacao', 'follow_up', 'encaminhado', 'convertido'];
+    if (!validCols.includes(s)) {
+      return 'novo_contato'; // Fallback de segurança para nunca perder o lead do quadro
+    }
+
+    return s as LeadStatus;
   }
 
   const getLeadsByStatus = (status: LeadStatus) => {
