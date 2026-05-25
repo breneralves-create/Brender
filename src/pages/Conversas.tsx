@@ -16,14 +16,14 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
-  FileText
+  FileText,
+  MessageCircle
 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { supabaseAdmin } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
 import { Input } from '../components/ui/Input'
-import { Badge } from '../components/ui/Badge'
 import { ScoreBar } from '../components/ui/ScoreBar'
 import { LeadTemperature } from '../components/ui/LeadTemperature'
 import { DrawerLead } from '../components/Lead/DrawerLead'
@@ -31,12 +31,12 @@ import { LeadModal } from '../components/Lead/LeadModal'
 import type { Lead, Interacao } from '../types'
 
 // ── Status visual mapping ──
-const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  novo_contato:    { label: 'Novo',           color: 'bg-blue-500',   icon: <Zap size={10} /> },
-  em_qualificacao: { label: 'Qualificando',   color: 'bg-yellow-500', icon: <AlertCircle size={10} /> },
-  follow_up:       { label: 'Follow-up',      color: 'bg-purple-500', icon: <Clock size={10} /> },
-  encaminhado:     { label: 'Encaminhado',     color: 'bg-orange-500', icon: <ArrowUpRight size={10} /> },
-  convertido:      { label: 'Convertido',      color: 'bg-emerald-500',icon: <CheckCircle2 size={10} /> },
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+  novo_contato:    { label: 'Novo',           color: 'text-blue-500',   bg: 'bg-blue-500/10',    icon: <Zap size={10} /> },
+  em_qualificacao: { label: 'Qualificando',   color: 'text-yellow-500', bg: 'bg-yellow-500/10',  icon: <AlertCircle size={10} /> },
+  follow_up:       { label: 'Follow-up',      color: 'text-purple-500', bg: 'bg-purple-500/10',  icon: <Clock size={10} /> },
+  encaminhado:     { label: 'Encaminhado',    color: 'text-orange-500', bg: 'bg-orange-500/10',  icon: <ArrowUpRight size={10} /> },
+  convertido:      { label: 'Convertido',     color: 'text-emerald-500',bg: 'bg-emerald-500/10', icon: <CheckCircle2 size={10} /> },
 }
 
 const getStatusInfo = (lead: Lead) => {
@@ -75,6 +75,7 @@ export const Conversas: React.FC = () => {
           filter: `lead_id=eq.${selectedLead.id}`
         }, (payload) => {
           setInteractions(prev => [...prev, payload.new as Interacao])
+          fetchLeads() // Fetch leads again to update order and last message snippet if needed
         })
         .subscribe()
 
@@ -99,7 +100,8 @@ export const Conversas: React.FC = () => {
       if (error) throw error
       if (data) {
         setLeads(data as Lead[])
-        if (data.length > 0 && !selectedLead) {
+        // Auto-select first lead if none selected and not searching
+        if (data.length > 0 && !selectedLead && !searchTerm && statusFilter === 'todos') {
           setSelectedLead(data[0] as Lead)
         }
       }
@@ -169,64 +171,71 @@ export const Conversas: React.FC = () => {
 
   return (
     <Layout title="Conversas">
-      <div className="flex h-[calc(100vh-120px)] overflow-hidden gap-0">
-
+      <div className="flex h-[calc(100vh-110px)] overflow-hidden rounded-2xl border border-border-card bg-bg-base shadow-2xl">
         {/* ═══════════════════════════════════════════════════════ */}
         {/* LEFT PANEL: Contact List                                */}
         {/* ═══════════════════════════════════════════════════════ */}
-        <div className="w-[380px] flex flex-col bg-bg-card border-r border-border-card shrink-0">
-
+        <div className="w-[400px] flex flex-col bg-bg-sidebar border-r border-border-card shrink-0 z-10 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.5)]">
           {/* Search & Filter Header */}
-          <div className="p-4 space-y-3 border-b border-border-card">
+          <div className="p-5 pb-4 space-y-4 border-b border-border-card/50 bg-bg-sidebar sticky top-0 z-20">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-main tracking-wide">Conversas</h3>
-              <span className="text-[10px] font-bold text-text-muted bg-bg-base px-2 py-1 rounded-md">
-                {filteredLeads.length} contatos
+              <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
+                <MessageCircle size={18} className="text-primary" />
+                Interações Recentes
+              </h3>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">
+                {filteredLeads.length} de {counts.total}
               </span>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={16} />
               <Input
-                className="pl-9 h-9 text-xs bg-bg-base border-border-card"
-                placeholder="Buscar por nome ou WhatsApp..."
+                className="pl-10 h-10 text-sm bg-bg-base border-border-card/60 focus:border-primary/50 transition-all rounded-xl shadow-inner"
+                placeholder="Buscar conversa..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
 
             {/* Quick status filter pills */}
-            <div className="flex gap-1.5 flex-wrap">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
               {[
                 { key: 'todos', label: 'Todos', count: counts.total },
                 { key: 'novo', label: 'Novos', count: counts.novo },
-                { key: 'qualificando', label: 'Qualificando', count: counts.qualificando },
-                { key: 'encaminhado', label: 'Encaminhados', count: counts.encaminhado },
+                { key: 'qualificando', label: 'Qualific.', count: counts.qualificando },
+                { key: 'encaminhado', label: 'Encam.', count: counts.encaminhado },
               ].map(f => (
                 <button
                   key={f.key}
                   onClick={() => setStatusFilter(f.key)}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                     statusFilter === f.key
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'bg-bg-base text-text-muted hover:text-text-main hover:bg-bg-base/80'
+                      ? 'bg-primary text-white shadow-md shadow-primary/20'
+                      : 'bg-bg-base text-text-muted border border-border-card hover:border-text-muted/30 hover:text-text-main'
                   }`}
                 >
-                  {f.label} ({f.count})
+                  {f.label}
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${statusFilter === f.key ? 'bg-black/20' : 'bg-border-card'}`}>
+                    {f.count}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Leads List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto bg-bg-sidebar custom-scrollbar p-2 space-y-1">
             {loading ? (
-              <div className="p-4 space-y-3">
+              <div className="p-3 space-y-3">
                 {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="flex gap-3 p-3 animate-pulse">
-                    <div className="w-10 h-10 rounded-full bg-bg-base/60" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-24 bg-bg-base/60 rounded" />
-                      <div className="h-2 w-32 bg-bg-base/40 rounded" />
+                  <div key={i} className="flex gap-4 p-4 bg-bg-card/40 rounded-xl animate-pulse">
+                    <div className="w-12 h-12 rounded-full bg-border-card/50" />
+                    <div className="flex-1 space-y-3 py-1">
+                      <div className="flex justify-between">
+                        <div className="h-3.5 w-28 bg-border-card/50 rounded-full" />
+                        <div className="h-2 w-10 bg-border-card/30 rounded-full" />
+                      </div>
+                      <div className="h-2.5 w-full max-w-[180px] bg-border-card/40 rounded-full" />
                     </div>
                   </div>
                 ))}
@@ -235,77 +244,89 @@ export const Conversas: React.FC = () => {
               filteredLeads.map((lead) => {
                 const statusInfo = getStatusInfo(lead)
                 const isActive = selectedLead?.id === lead.id
+                const leadInitial = lead.nome ? lead.nome[0].toUpperCase() : <User size={16} />
 
                 return (
                   <div
                     key={lead.id}
                     onClick={() => setSelectedLead(lead)}
                     className={`
-                      flex gap-3 px-4 py-3.5 cursor-pointer transition-all border-b border-border-card/50
+                      relative flex gap-3.5 p-3.5 rounded-xl cursor-pointer transition-all duration-300 group
                       ${isActive
-                        ? 'bg-primary/8 border-l-[3px] border-l-primary'
-                        : 'border-l-[3px] border-l-transparent hover:bg-bg-base/30'
+                        ? 'bg-primary/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] border-transparent'
+                        : 'bg-transparent hover:bg-bg-card border border-transparent hover:border-border-card/50'
                       }
                     `}
                   >
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_8px_rgba(0,200,150,0.6)]" />
+                    )}
+
                     {/* Avatar */}
-                    <div className="relative shrink-0">
+                    <div className="relative shrink-0 mt-0.5">
                       <div className={`
-                        w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
-                        ${isActive ? 'bg-primary/20 text-primary' : 'bg-bg-base border border-border-card text-text-muted'}
+                        w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-colors
+                        ${isActive 
+                          ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                          : 'bg-bg-base border border-border-card text-text-muted group-hover:border-primary/30 group-hover:text-primary'
+                        }
                       `}>
-                        {lead.nome?.[0]?.toUpperCase() || <User size={16} />}
+                        {leadInitial}
                       </div>
                       {(lead.score || 0) >= 80 && (
-                        <div className="absolute -top-0.5 -right-0.5 bg-hot text-white p-0.5 rounded-full">
-                          <Flame size={8} />
+                        <div className="absolute -bottom-1 -right-1 bg-hot text-white p-1 rounded-full shadow-lg border-2 border-bg-sidebar">
+                          <Flame size={10} />
                         </div>
                       )}
                     </div>
 
                     {/* Lead Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-0.5">
-                        <p className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : 'text-text-main'}`}>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className={`text-sm font-bold truncate transition-colors ${isActive ? 'text-text-main' : 'text-text-main/90 group-hover:text-text-main'}`}>
                           {lead.nome || formatWhatsApp(lead.whatsapp)}
                         </p>
-                        <span className="text-[9px] text-text-muted whitespace-nowrap ml-2">
+                        <span className={`text-[10px] font-medium whitespace-nowrap ml-2 ${isActive ? 'text-primary' : 'text-text-muted/60'}`}>
                           {formatDistanceToNow(new Date(lead.horario_contato), { addSuffix: false, locale: ptBR })}
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-text-muted truncate mb-1.5">
-                        {lead.resumo_conversa || 'Aguardando qualificação...'}
+                      <p className={`text-xs truncate mb-2 leading-relaxed ${isActive ? 'text-text-main/80 font-medium' : 'text-text-muted/80'}`}>
+                        {lead.resumo_conversa || lead.motivo_contato || 'Aguardando interação...'}
                       </p>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         {/* Status pill */}
                         <span className={`
-                          inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold text-white
-                          ${statusInfo.color}
+                          inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider
+                          ${statusInfo.bg} ${statusInfo.color}
                         `}>
                           {statusInfo.icon}
                           {statusInfo.label}
                         </span>
 
-                        <LeadTemperature temperature={lead.temperatura} className="text-[8px] py-0 px-1" />
-
-                        <span className="text-[9px] font-bold text-text-muted ml-auto tabular-nums">
-                          {lead.score || 0}pts
-                        </span>
+                        <div className="w-1 h-1 rounded-full bg-border-card" />
+                        
+                        <div className="flex items-center gap-1">
+                           <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider tabular-nums">
+                            {lead.score || 0} pts
+                           </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )
               })
             ) : (
-              <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-bg-base flex items-center justify-center mb-4">
-                  <MessageSquare size={28} className="text-text-muted/30" />
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center h-full">
+                <div className="w-20 h-20 rounded-3xl bg-bg-card/50 border border-border-card/50 flex items-center justify-center mb-5 shadow-inner">
+                  <MessageSquare size={32} className="text-text-muted/40" />
                 </div>
-                <p className="text-sm font-semibold text-text-main mb-1">Nenhuma conversa</p>
-                <p className="text-xs text-text-muted">
-                  {searchTerm ? 'Nenhum resultado para a busca.' : 'Os leads aparecerão aqui quando forem captados.'}
+                <p className="text-base font-bold text-text-main mb-2">Nenhuma conversa encontrada</p>
+                <p className="text-xs text-text-muted leading-relaxed max-w-[240px]">
+                  {searchTerm 
+                    ? 'Tente limpar os filtros ou usar outros termos na busca.' 
+                    : 'Os leads aparecerão aqui assim que ocorrer a primeira interação.'}
                 </p>
               </div>
             )}
@@ -316,75 +337,86 @@ export const Conversas: React.FC = () => {
         {/* CENTER PANEL: Chat / Messages                          */}
         {/* ═══════════════════════════════════════════════════════ */}
         {selectedLead ? (
-          <div className="flex-1 flex flex-col bg-bg-base overflow-hidden">
+          <div className="flex-1 flex flex-col bg-bg-base/50 relative">
+            {/* Ambient Background Glow */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
-            {/* Chat Header */}
-            <div className="px-5 py-3 bg-bg-card border-b border-border-card flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsDrawerOpen(true)}>
-                <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-sm">
-                  {selectedLead.nome?.[0]?.toUpperCase() || <User size={16} />}
+            {/* Chat Header Premium */}
+            <div className="px-6 py-4 bg-bg-card/90 backdrop-blur-md border-b border-border-card flex items-center justify-between shrink-0 z-10 shadow-sm">
+              <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setIsDrawerOpen(true)}>
+                <div className="relative">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
+                    {selectedLead.nome?.[0]?.toUpperCase() || <User size={20} />}
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-success border-2 border-bg-card rounded-full" />
                 </div>
+                
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-text-main">
+                  <div className="flex items-center gap-2.5">
+                    <h4 className="text-base font-bold text-text-main group-hover:text-primary transition-colors">
                       {selectedLead.nome || formatWhatsApp(selectedLead.whatsapp)}
                     </h4>
                     {(() => {
                       const si = getStatusInfo(selectedLead)
                       return (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold text-white ${si.color}`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${si.bg} ${si.color} border border-current/10`}>
                           {si.icon} {si.label}
                         </span>
                       )
                     })()}
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5">
+                  <div className="flex items-center gap-3 mt-1">
                     {selectedLead.whatsapp && (
-                      <span className="text-[10px] text-text-muted flex items-center gap-1">
-                        <Phone size={9} /> {formatWhatsApp(selectedLead.whatsapp)}
+                      <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-medium">
+                        <Phone size={10} className="text-text-muted/60" /> {formatWhatsApp(selectedLead.whatsapp)}
                       </span>
                     )}
                     {selectedLead.cidade && (
-                      <span className="text-[10px] text-text-muted flex items-center gap-1">
-                        <MapPin size={9} /> {selectedLead.cidade}
-                      </span>
-                    )}
-                    {selectedLead.origem && (
-                      <span className="text-[10px] text-text-muted">
-                        via {selectedLead.origem.replace('_', ' ')}
+                      <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-medium">
+                        <MapPin size={10} className="text-text-muted/60" /> {selectedLead.cidade}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 mr-2">
-                  <ScoreBar score={selectedLead.score || 0} className="w-14 h-1.5" />
-                  <span className="text-[10px] font-bold text-text-muted tabular-nums">{selectedLead.score || 0}%</span>
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-end mr-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Score</span>
+                    <span className="text-xs font-black text-text-main tabular-nums">{selectedLead.score || 0}%</span>
+                  </div>
+                  <ScoreBar score={selectedLead.score || 0} className="w-24 h-1.5 rounded-full" />
                 </div>
+                <div className="w-px h-8 bg-border-card mx-1" />
                 <button
                   onClick={() => setIsDrawerOpen(true)}
-                  className="p-2 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all"
-                  title="Ver detalhes do lead"
+                  className="p-2.5 rounded-xl text-text-muted hover:text-white hover:bg-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
+                  title="Ver detalhes completos do lead"
                 >
-                  <Info size={18} />
+                  <Info size={20} />
                 </button>
               </div>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 z-10 custom-scrollbar">
 
-              {/* AI Summary Card */}
+              {/* AI Summary Card Premium */}
               {selectedLead.resumo_conversa && (
-                <div className="mx-auto max-w-lg w-full bg-primary/5 border border-primary/15 rounded-xl p-3.5 flex gap-3 items-start">
-                  <div className="p-1.5 bg-primary rounded-lg text-white shrink-0">
-                    <Bot size={14} />
+                <div className="mx-auto max-w-2xl w-full bg-primary/5 border border-primary/20 rounded-2xl p-5 flex gap-4 items-start shadow-lg shadow-primary/5 backdrop-blur-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Bot size={80} />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Resumo da IA</p>
-                    <p className="text-xs text-text-main leading-relaxed">
+                  <div className="p-2.5 bg-gradient-to-br from-primary to-primary-hover rounded-xl text-white shrink-0 shadow-lg shadow-primary/30 relative z-10">
+                    <Bot size={20} />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <p className="text-[11px] font-black text-primary uppercase tracking-widest">Resumo da IA</p>
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    </div>
+                    <p className="text-sm text-text-main/90 leading-relaxed font-medium">
                       {selectedLead.resumo_conversa}
                     </p>
                   </div>
@@ -392,141 +424,172 @@ export const Conversas: React.FC = () => {
               )}
 
               {/* Date Divider */}
-              <div className="flex items-center gap-3 py-2">
-                <div className="flex-1 h-px bg-border-card/50" />
-                <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide bg-bg-base px-3 py-1 rounded-full border border-border-card/50">
+              <div className="flex items-center gap-4 py-4 max-w-3xl mx-auto">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border-card to-transparent opacity-50" />
+                <span className="text-[10px] font-bold text-text-muted/60 uppercase tracking-[0.2em] bg-bg-base/50 px-4 py-1.5 rounded-full border border-border-card/30 backdrop-blur-sm">
                   {format(new Date(selectedLead.horario_contato), "dd 'de' MMMM, yyyy", { locale: ptBR })}
                 </span>
-                <div className="flex-1 h-px bg-border-card/50" />
+                <div className="flex-1 h-px bg-gradient-to-l from-transparent via-border-card to-transparent opacity-50" />
               </div>
 
               {chatLoading ? (
-                <div className="space-y-4 py-6">
+                <div className="space-y-6 py-4 max-w-3xl mx-auto w-full">
                   {[1, 2, 3].map(i => (
                     <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`h-10 rounded-2xl animate-pulse bg-bg-card ${i % 2 === 0 ? 'w-40' : 'w-52'}`} />
+                      <div className={`h-12 rounded-2xl rounded-${i % 2 === 0 ? 'br' : 'bl'}-sm animate-pulse bg-bg-card/60 ${i % 2 === 0 ? 'w-48' : 'w-64'}`} />
                     </div>
                   ))}
                 </div>
               ) : interactions.length > 0 ? (
-                interactions.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${
-                      msg.tipo === 'mensagem_lead' ? 'justify-end' :
-                      msg.tipo === 'nota_vendedor' ? 'justify-center' : 'justify-start'
-                    }`}
-                  >
-                    {/* Agent avatar */}
-                    {msg.tipo === 'resposta_agente' && (
-                      <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-primary shrink-0 mr-2 mt-1">
-                        <Bot size={12} />
-                      </div>
-                    )}
+                <div className="max-w-3xl mx-auto w-full space-y-6">
+                  {interactions.map((msg, index) => {
+                    const isLead = msg.tipo === 'mensagem_lead'
+                    const isSystem = msg.tipo === 'nota_vendedor' || msg.tipo === 'sistema'
+                    const showAvatar = index === 0 || interactions[index - 1].tipo !== msg.tipo
 
-                    <div className="max-w-[70%]">
-                      {/* Sender label */}
-                      {msg.tipo === 'resposta_agente' && (
-                        <span className="text-[9px] font-bold text-primary mb-0.5 block ml-1">Agente IA</span>
-                      )}
-                      {msg.tipo === 'mensagem_lead' && (
-                        <span className="text-[9px] font-bold text-text-muted mb-0.5 block text-right mr-1">
-                          {selectedLead.nome || 'Lead'}
-                        </span>
-                      )}
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex gap-3 group ${
+                          isLead ? 'justify-end' : isSystem ? 'justify-center' : 'justify-start'
+                        }`}
+                      >
+                        {/* Agent Avatar */}
+                        {!isLead && !isSystem && (
+                          <div className={`w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary shrink-0 mt-auto border border-primary/20 ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
+                            <Bot size={14} />
+                          </div>
+                        )}
 
-                      <div className={`
-                        px-4 py-2.5 text-sm leading-relaxed
-                        ${msg.tipo === 'mensagem_lead'
-                          ? 'bg-primary text-white rounded-2xl rounded-br-md'
-                          : msg.tipo === 'nota_vendedor'
-                          ? 'bg-warning/8 border border-warning/20 text-warning text-center italic rounded-lg flex items-center gap-2 text-xs'
-                          : 'bg-bg-card text-text-main border border-border-card rounded-2xl rounded-bl-md'
-                        }
-                      `}>
-                        {msg.tipo === 'nota_vendedor' && <FileText size={12} className="shrink-0" />}
-                        {msg.conteudo}
-                      </div>
+                        <div className={`max-w-[75%] flex flex-col ${isLead ? 'items-end' : isSystem ? 'items-center' : 'items-start'}`}>
+                          
+                          {/* Sender Label */}
+                          {showAvatar && !isSystem && (
+                            <span className="text-[10px] font-bold text-text-muted/60 mb-1.5 uppercase tracking-wider px-1">
+                              {isLead ? (selectedLead.nome || 'Lead') : 'Agente IA'}
+                            </span>
+                          )}
 
-                      <div className={`
-                        flex items-center gap-1 mt-1 px-1
-                        ${msg.tipo === 'mensagem_lead' ? 'justify-end' : 'justify-start'}
-                      `}>
-                        <span className="text-[9px] text-text-muted/60">
-                          {format(new Date(msg.criado_em), 'HH:mm')}
-                        </span>
-                        {msg.tipo === 'resposta_agente' && (
-                          <Check size={10} className="text-primary/60" />
+                          <div className={`
+                            relative px-4 py-3 text-[15px] leading-relaxed shadow-sm transition-all hover:shadow-md
+                            ${isLead
+                              ? 'bg-primary text-white rounded-2xl rounded-br-sm shadow-primary/20 hover:shadow-primary/30'
+                              : isSystem
+                              ? 'bg-warning/10 border border-warning/20 text-warning text-center rounded-xl flex items-center gap-2 text-xs font-medium px-5'
+                              : 'bg-bg-card text-text-main border border-border-card rounded-2xl rounded-bl-sm shadow-black/10'
+                            }
+                          `}>
+                            {isSystem && <FileText size={14} className="shrink-0 opacity-70" />}
+                            {msg.conteudo}
+                          </div>
+
+                          {/* Timestamp & Status */}
+                          <div className={`
+                            flex items-center gap-1.5 mt-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity
+                            ${isLead ? 'flex-row-reverse' : 'flex-row'}
+                          `}>
+                            <span className="text-[10px] font-medium text-text-muted/50">
+                              {format(new Date(msg.criado_em), 'HH:mm')}
+                            </span>
+                            {!isSystem && (
+                              <Check size={12} className={isLead ? 'text-primary/60' : 'text-text-muted/40'} />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Lead Avatar */}
+                        {isLead && (
+                          <div className={`w-8 h-8 rounded-full bg-bg-card border border-border-card flex items-center justify-center text-text-muted shrink-0 mt-auto ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
+                            {selectedLead.nome?.[0]?.toUpperCase() || <User size={14} />}
+                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Lead avatar */}
-                    {msg.tipo === 'mensagem_lead' && (
-                      <div className="w-7 h-7 rounded-full bg-bg-card border border-border-card flex items-center justify-center text-text-muted shrink-0 ml-2 mt-5">
-                        <User size={12} />
-                      </div>
-                    )}
-                  </div>
-                ))
+                    )
+                  })}
+                </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-                  <div className="w-20 h-20 rounded-2xl bg-bg-card border border-border-card flex items-center justify-center mb-5">
-                    <MessageSquare size={32} className="text-text-muted/20" />
+                <div className="flex-1 flex flex-col items-center justify-center py-24 text-center h-full">
+                  <div className="w-24 h-24 rounded-full bg-bg-card/40 border border-border-card flex items-center justify-center mb-6 shadow-xl relative">
+                    <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping opacity-20" />
+                    <MessageSquare size={36} className="text-text-muted/40" />
                   </div>
-                  <p className="text-base font-bold text-text-main mb-1">Sem mensagens</p>
-                  <p className="text-xs text-text-muted max-w-[280px]">
-                    Nenhuma interação registrada para este lead. Quando houver troca de mensagens, elas aparecerão aqui.
+                  <p className="text-xl font-bold text-text-main mb-2 font-heading">Nenhuma mensagem registrada</p>
+                  <p className="text-sm text-text-muted max-w-[320px] leading-relaxed">
+                    Aguardando a primeira interação deste lead. A IA irá registrar tudo automaticamente aqui.
                   </p>
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-4" />
             </div>
 
-            {/* Bottom Bar */}
-            <div className="px-5 py-3 bg-bg-card border-t border-border-card flex items-center gap-3 shrink-0">
-              <div className="flex-1 flex items-center gap-2 bg-bg-base rounded-lg px-4 py-2.5 border border-border-card">
-                <Bot size={14} className="text-primary shrink-0" />
-                <span className="text-xs text-text-muted">
-                  A IA está monitorando esta conversa em tempo real.
+            {/* Bottom Bar Premium */}
+            <div className="px-6 py-4 bg-bg-card/90 backdrop-blur-md border-t border-border-card flex items-center gap-4 shrink-0 z-10 shadow-[0_-4px_24px_-12px_rgba(0,0,0,0.5)]">
+              <div className="flex-1 flex items-center gap-3 bg-bg-base/80 rounded-xl px-5 py-3.5 border border-border-card/50 shadow-inner">
+                <div className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-40"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                </div>
+                <span className="text-[13px] font-medium text-text-muted">
+                  Agente de Inteligência Artificial monitorando e respondendo em tempo real...
                 </span>
               </div>
               <button
                 onClick={() => setIsDrawerOpen(true)}
-                className="px-4 py-2.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5"
+                className="px-6 py-3.5 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary hover:text-white transition-all duration-300 flex items-center gap-2 shadow-sm"
               >
-                <Info size={14} />
-                Detalhes
+                <Info size={16} />
+                Ficha Completa
               </button>
             </div>
           </div>
         ) : (
-          /* ─── Empty state ─── */
-          <div className="flex-1 flex flex-col items-center justify-center bg-bg-base">
-            <div className="text-center space-y-5">
-              <div className="w-24 h-24 bg-bg-card rounded-3xl flex items-center justify-center mx-auto border border-border-card shadow-inner">
-                <MessageSquare size={40} className="text-text-muted/20" />
+          /* ─── Premium Empty State ─── */
+          <div className="flex-1 flex flex-col items-center justify-center bg-bg-base/30 relative overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvc3ZnPg==')] opacity-50" />
+
+            <div className="text-center space-y-8 relative z-10 flex flex-col items-center">
+              <div className="relative">
+                <div className="w-32 h-32 bg-bg-card rounded-[2.5rem] flex items-center justify-center mx-auto border border-border-card/80 shadow-2xl rotate-3 transition-transform hover:rotate-6 duration-500">
+                  <MessageSquare size={50} className="text-text-muted/30" />
+                </div>
+                {/* Floating badges */}
+                <div className="absolute -top-4 -right-4 bg-primary text-white p-3 rounded-2xl shadow-lg shadow-primary/20 rotate-12 animate-pulse-hot">
+                  <Bot size={24} />
+                </div>
+                <div className="absolute -bottom-4 -left-4 bg-bg-card border border-border-card text-text-muted p-2.5 rounded-2xl shadow-xl -rotate-12">
+                  <Zap size={20} className="text-warning" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <h4 className="text-xl font-bold text-text-main">Monitoramento de Conversas</h4>
-                <p className="text-sm text-text-muted max-w-sm">
-                  Selecione um lead na lista ao lado para visualizar o histórico de mensagens e monitorar o atendimento da IA em tempo real.
+              
+              <div className="space-y-3 max-w-md">
+                <h4 className="text-3xl font-black text-text-main font-heading tracking-tight">Monitoramento ao Vivo</h4>
+                <p className="text-[15px] text-text-muted leading-relaxed font-medium">
+                  Selecione uma conversa na lista lateral para visualizar o histórico detalhado, resumo gerado pela IA e acompanhamento em tempo real.
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-6 text-text-muted/40">
-                <div className="flex flex-col items-center gap-2">
-                  <Bot size={20} />
-                  <span className="text-[10px] font-semibold">Atendimento IA</span>
+
+              <div className="flex items-center justify-center gap-6 bg-bg-card/40 backdrop-blur border border-border-card/50 px-8 py-5 rounded-2xl shadow-lg mt-4">
+                <div className="flex flex-col items-center gap-2.5 group">
+                  <div className="p-3 bg-primary/10 rounded-xl group-hover:bg-primary/20 transition-colors">
+                    <Bot size={22} className="text-primary" />
+                  </div>
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">IA Qualificando</span>
                 </div>
-                <ChevronRight size={16} />
-                <div className="flex flex-col items-center gap-2">
-                  <User size={20} />
-                  <span className="text-[10px] font-semibold">Qualificação</span>
+                <div className="w-12 h-px bg-border-card" />
+                <div className="flex flex-col items-center gap-2.5 group">
+                  <div className="p-3 bg-warning/10 rounded-xl group-hover:bg-warning/20 transition-colors">
+                    <Flame size={22} className="text-warning" />
+                  </div>
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Aquecimento</span>
                 </div>
-                <ChevronRight size={16} />
-                <div className="flex flex-col items-center gap-2">
-                  <CheckCircle2 size={20} />
-                  <span className="text-[10px] font-semibold">Conversão</span>
+                <div className="w-12 h-px bg-border-card" />
+                <div className="flex flex-col items-center gap-2.5 group">
+                  <div className="p-3 bg-success/10 rounded-xl group-hover:bg-success/20 transition-colors">
+                    <CheckCircle2 size={22} className="text-success" />
+                  </div>
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Conversão</span>
                 </div>
               </div>
             </div>
