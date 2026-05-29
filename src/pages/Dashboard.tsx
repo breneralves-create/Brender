@@ -68,7 +68,7 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false })

@@ -54,7 +54,7 @@ export const Funil: React.FC = () => {
 
   const fetchHotLeads = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false })

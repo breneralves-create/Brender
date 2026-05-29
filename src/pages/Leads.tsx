@@ -72,7 +72,7 @@ export const Leads: React.FC = () => {
   const fetchLeads = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false })
