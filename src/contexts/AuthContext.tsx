@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseAdmin } from '../lib/supabase'
 import type { UserProfile } from '../types'
 
 interface AuthContextType {
@@ -29,18 +29,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchUserProfile(session.user.id)
+        void fetchUserProfile(session.user.id)
       } else {
         setLoading(false)
       }
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null
       setUser(currentUser)
       if (currentUser) {
-        await fetchUserProfile(currentUser.id)
+        setLoading(false)
+        setTimeout(() => {
+          void fetchUserProfile(currentUser.id)
+        }, 0)
       } else {
         setUserProfile(null)
         setLoading(false)
@@ -55,14 +58,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (id: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('id', id)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
-      setUserProfile(data)
+      setUserProfile(data ?? null)
     } catch (error) {
       console.error('Error fetching user profile:', error)
     } finally {
@@ -71,8 +74,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+    setUser(data.user)
+    setLoading(false)
+    if (data.user) {
+      setTimeout(() => {
+        void fetchUserProfile(data.user.id)
+      }, 0)
+    }
   }
 
   const signOut = async () => {

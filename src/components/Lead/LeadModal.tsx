@@ -4,7 +4,6 @@ import type { Lead } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
-import { useAuth } from '../../contexts/AuthContext'
 import { useCompany } from '../../contexts/CompanyContext'
 
 interface LeadModalProps {
@@ -30,7 +29,6 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   onSuccess,
   lead
 }) => {
-  const { user } = useAuth()
   const { businessHours } = useCompany()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -124,15 +122,12 @@ export const LeadModal: React.FC<LeadModalProps> = ({
         ...formData,
         whatsapp: formData.whatsapp.replace(/\D/g, ''), // salva só números
         status: lead ? lead.status : 'novo_contato',
-        horario_contato: lead?.horario_contato ?? new Date().toISOString(),
         dentro_horario_comercial: checkBusinessHours(lead?.horario_contato ? new Date(lead.horario_contato) : new Date()),
         encaminhado_vendedor: lead?.encaminhado_vendedor ?? false,
         convertido: lead?.convertido ?? false,
         orcamento_informado: lead?.orcamento_informado ?? false,
-        follow_up_agendado: lead?.follow_up_agendado ?? false,
         score: lead?.score ?? 0,
-        temperatura: lead?.temperatura ?? 'frio',
-        usuario_id: lead?.usuario_id ?? user?.id
+        temperatura: lead?.temperatura ?? 'frio'
       }
 
       const response: any = lead

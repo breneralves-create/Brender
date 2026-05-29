@@ -71,7 +71,7 @@ export const Dashboard: React.FC = () => {
       const { data, error } = await supabaseAdmin
         .from('leads')
         .select('*')
-        .order('horario_contato', { ascending: false })
+        .order('created_at', { ascending: false })
       
       if (error) throw error
       

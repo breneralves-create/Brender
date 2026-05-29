@@ -27,20 +27,48 @@ import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
 import type { Lead, Interacao } from '../types'
 
-// ── Status visual mapping ──
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  novo_contato:    { label: 'Novo',           color: 'text-blue-500',   bg: 'bg-blue-500/10',    icon: <Zap size={10} /> },
-  em_qualificacao: { label: 'Qualificando',   color: 'text-yellow-500', bg: 'bg-yellow-500/10',  icon: <AlertCircle size={10} /> },
-  follow_up:       { label: 'Follow-up',      color: 'text-purple-500', bg: 'bg-purple-500/10',  icon: <Clock size={10} /> },
-  encaminhado:     { label: 'Encaminhado',    color: 'text-orange-500', bg: 'bg-orange-500/10',  icon: <ArrowUpRight size={10} /> },
-  convertido:      { label: 'Convertido',     color: 'text-emerald-500',bg: 'bg-emerald-500/10', icon: <CheckCircle2 size={10} /> },
+// ── Status visual mapping matching Funil columns ──
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string; border: string; hexColor: string; icon: React.ReactNode }> = {
+  novo_contato:    { label: 'Novo',           color: 'text-blue-500',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    hexColor: '#3b82f6', icon: <Zap size={10} /> },
+  em_qualificacao: { label: 'Qualificando',   color: 'text-cyan-500',    bg: 'bg-cyan-500/10',    border: 'border-cyan-500/20',    hexColor: '#06b6d4', icon: <AlertCircle size={10} /> },
+  follow_up:       { label: 'Follow-up',      color: 'text-amber-500',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   hexColor: '#f59e0b', icon: <Clock size={10} /> },
+  encaminhado:     { label: 'Encaminhado',    color: 'text-purple-500',  bg: 'bg-purple-500/10',  border: 'border-purple-500/20',  hexColor: '#8b5cf6', icon: <ArrowUpRight size={10} /> },
+  convertido:      { label: 'Convertido',     color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', hexColor: '#10b981', icon: <CheckCircle2 size={10} /> },
 }
 
 const getStatusInfo = (lead: Lead) => {
-  if (lead.convertido)           return STATUS_MAP['convertido']
+  if (lead.convertido) return STATUS_MAP['convertido']
   if (lead.encaminhado_vendedor) return STATUS_MAP['encaminhado']
-  return STATUS_MAP[lead.status] || STATUS_MAP['novo_contato']
+  
+  let s: string = lead.status || 'novo_contato'
+  if (s === 'fora_horario' || s === 'primeiro_contato' || s === 'conversando') s = 'novo_contato'
+  else if (s === 'proposta_enviada' || s === 'quente' || s === 'morno' || s === 'frio' || s === 'sem_interesse') s = 'em_qualificacao'
+
+  return STATUS_MAP[s] || STATUS_MAP['novo_contato']
 }
+
+const safeFormatDistanceToNow = (dateStr: string | null | undefined) => {
+  if (!dateStr) return 'agora'
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return 'agora'
+    return formatDistanceToNow(d, { addSuffix: false, locale: ptBR })
+  } catch (e) {
+    return 'agora'
+  }
+}
+
+const safeFormatDate = (dateStr: string | null | undefined, formatTemplate: string) => {
+  if (!dateStr) return format(new Date(), formatTemplate, { locale: ptBR })
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return format(new Date(), formatTemplate, { locale: ptBR })
+    return format(d, formatTemplate, { locale: ptBR })
+  } catch (e) {
+    return format(new Date(), formatTemplate, { locale: ptBR })
+  }
+}
+
 
 export const Conversas: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -92,7 +120,7 @@ export const Conversas: React.FC = () => {
       const { data, error } = await supabaseAdmin
         .from('leads')
         .select('*')
-        .order('horario_contato', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       if (data) {
@@ -136,8 +164,13 @@ export const Conversas: React.FC = () => {
       if (statusFilter === 'todos') return matchSearch
 
       const info = getStatusInfo(l)
-      const statusLabel = info.label.toLowerCase()
-      return matchSearch && statusLabel.includes(statusFilter.toLowerCase())
+      let statusKey = 'novo'
+      if (info.label === 'Qualificando') statusKey = 'qualificando'
+      else if (info.label === 'Follow-up') statusKey = 'follow_up'
+      else if (info.label === 'Encaminhado') statusKey = 'encaminhado'
+      else if (info.label === 'Convertido') statusKey = 'convertido'
+
+      return matchSearch && statusKey === statusFilter
     })
   }, [leads, searchTerm, statusFilter])
 
@@ -194,29 +227,34 @@ export const Conversas: React.FC = () => {
               />
             </div>
 
-            {/* Quick status filter pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+            {/* Quick status filter pills matching Funil columns */}
+            <div className="flex gap-1.5 overflow-x-auto pb-2.5 pt-0.5 custom-scrollbar">
               {[
-                { key: 'todos', label: 'Todos', count: counts.total },
-                { key: 'novo', label: 'Novos', count: counts.novo },
-                { key: 'qualificando', label: 'Qualific.', count: counts.qualificando },
-                { key: 'encaminhado', label: 'Encam.', count: counts.encaminhado },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setStatusFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                    statusFilter === f.key
-                      ? 'bg-primary text-white shadow-md shadow-primary/20'
-                      : 'bg-bg-base text-text-muted border border-border-card hover:border-text-muted/30 hover:text-text-main'
-                  }`}
-                >
-                  {f.label}
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${statusFilter === f.key ? 'bg-black/20' : 'bg-border-card'}`}>
-                    {f.count}
-                  </span>
-                </button>
-              ))}
+                { key: 'todos', label: 'Todos', count: counts.total, activeClass: 'bg-primary text-[#0F1117] shadow-md shadow-primary/20', hoverClass: 'hover:border-primary/40 hover:text-primary' },
+                { key: 'novo', label: 'Novos', count: counts.novo, activeClass: 'bg-blue-500 text-white shadow-md shadow-blue-500/20', hoverClass: 'hover:border-blue-500/40 hover:text-blue-500' },
+                { key: 'qualificando', label: 'Qualific.', count: counts.qualificando, activeClass: 'bg-cyan-500 text-[#0F1117] shadow-md shadow-cyan-500/20', hoverClass: 'hover:border-cyan-500/40 hover:text-cyan-500' },
+                { key: 'follow_up', label: 'Follow-up', count: counts.followup, activeClass: 'bg-amber-500 text-[#0F1117] shadow-md shadow-amber-500/20', hoverClass: 'hover:border-amber-500/40 hover:text-amber-500' },
+                { key: 'encaminhado', label: 'Encam.', count: counts.encaminhado, activeClass: 'bg-purple-500 text-white shadow-md shadow-purple-500/20', hoverClass: 'hover:border-purple-500/40 hover:text-purple-500' },
+                { key: 'convertido', label: 'Convertidos', count: counts.convertido, activeClass: 'bg-emerald-500 text-[#0F1117] shadow-md shadow-emerald-500/20', hoverClass: 'hover:border-emerald-500/40 hover:text-emerald-500' },
+              ].map(f => {
+                const isSelected = statusFilter === f.key
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setStatusFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border ${
+                      isSelected
+                        ? f.activeClass + ' border-transparent'
+                        : 'bg-bg-base text-text-muted border-border-card ' + f.hoverClass
+                    }`}
+                  >
+                    {f.label}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-extrabold ${isSelected ? 'bg-black/10' : 'bg-border-card/85'}`}>
+                      {f.count}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -248,26 +286,44 @@ export const Conversas: React.FC = () => {
                     key={lead.id}
                     onClick={() => setSelectedLead(lead)}
                     className={`
-                      relative flex gap-3.5 p-3.5 rounded-xl cursor-pointer transition-all duration-300 group
+                      relative flex gap-3.5 p-3.5 rounded-xl cursor-pointer transition-all duration-300 group border
                       ${isActive
-                        ? 'bg-primary/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] border-transparent'
-                        : 'bg-transparent hover:bg-bg-card border border-transparent hover:border-border-card/50'
+                        ? 'shadow-lg shadow-black/10'
+                        : 'bg-transparent hover:bg-bg-card border-transparent hover:border-border-card/50'
                       }
                     `}
+                    style={{
+                      backgroundColor: isActive ? `${statusInfo.hexColor}0b` : undefined,
+                      borderColor: isActive ? `${statusInfo.hexColor}25` : undefined
+                    }}
                   >
-                    {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_8px_rgba(0,200,150,0.6)]" />
-                    )}
+                    {/* Dynamic left border indicator matching funnel stage */}
+                    <div 
+                      className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full transition-all duration-300 ${
+                        isActive ? 'h-10 opacity-100 shadow-[0_0_8px_currentColor]' : 'h-6 opacity-30 group-hover:opacity-75 group-hover:h-8'
+                      }`}
+                      style={{ 
+                        color: statusInfo.hexColor,
+                        backgroundColor: 'currentColor' 
+                      }} 
+                    />
 
-                    {/* Avatar */}
+                    {/* Avatar with dynamic ring */}
                     <div className="relative shrink-0 mt-0.5">
-                      <div className={`
-                        w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-colors
-                        ${isActive 
-                          ? 'bg-primary text-white shadow-lg shadow-primary/30' 
-                          : 'bg-bg-base border border-border-card text-text-muted group-hover:border-primary/30 group-hover:text-primary'
-                        }
-                      `}>
+                      <div 
+                        className={`
+                          w-12 h-12 rounded-full flex items-center justify-center text-sm font-black transition-all duration-300 border-2
+                          ${isActive 
+                            ? 'text-white' 
+                            : 'bg-bg-base border-border-card text-text-muted group-hover:text-text-main'
+                          }
+                        `}
+                        style={{
+                          borderColor: isActive ? statusInfo.hexColor : 'transparent',
+                          backgroundColor: isActive ? statusInfo.hexColor : undefined,
+                          boxShadow: isActive ? `0 4px 12px ${statusInfo.hexColor}33` : undefined
+                        }}
+                      >
                         {leadInitial}
                       </div>
                       {(lead.score || 0) >= 80 && (
@@ -280,11 +336,11 @@ export const Conversas: React.FC = () => {
                     {/* Lead Info */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex justify-between items-center mb-1">
-                        <p className={`text-sm font-bold truncate transition-colors ${isActive ? 'text-text-main' : 'text-text-main/90 group-hover:text-text-main'}`}>
+                        <p className={`text-[13px] font-extrabold truncate transition-colors ${isActive ? 'text-text-main' : 'text-text-main/90 group-hover:text-text-main'}`}>
                           {lead.nome || formatWhatsApp(lead.whatsapp)}
                         </p>
-                        <span className={`text-[10px] font-medium whitespace-nowrap ml-2 ${isActive ? 'text-primary' : 'text-text-muted/60'}`}>
-                          {formatDistanceToNow(new Date(lead.horario_contato), { addSuffix: false, locale: ptBR })}
+                        <span className={`text-[10px] font-bold whitespace-nowrap ml-2 ${isActive ? 'text-text-main/90' : 'text-text-muted/60'}`}>
+                          {safeFormatDistanceToNow(lead.horario_contato || lead.created_at)}
                         </span>
                       </div>
 
@@ -292,23 +348,35 @@ export const Conversas: React.FC = () => {
                         {lead.resumo_conversa || 'Aguardando interação...'}
                       </p>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {/* Status pill */}
                         <span className={`
-                          inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider
+                          inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border border-current/10
                           ${statusInfo.bg} ${statusInfo.color}
                         `}>
                           {statusInfo.icon}
                           {statusInfo.label}
                         </span>
 
-                        <div className="w-1 h-1 rounded-full bg-border-card" />
+                        <div className="w-1 h-1 rounded-full bg-border-card/60" />
                         
                         <div className="flex items-center gap-1">
-                           <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider tabular-nums">
+                           <span className="text-[9px] font-black text-text-muted uppercase tracking-wider tabular-nums">
                             {lead.score || 0} pts
                            </span>
                         </div>
+
+                        {lead.temperatura && (
+                          <>
+                            <div className="w-1 h-1 rounded-full bg-border-card/60" />
+                            <span className={`
+                              px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border border-current/10
+                              ${lead.temperatura === 'quente' ? 'bg-hot/10 text-hot' : lead.temperatura === 'morno' ? 'bg-warm/10 text-warm' : 'bg-cold/10 text-cold'}
+                            `}>
+                              {lead.temperatura}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -339,81 +407,94 @@ export const Conversas: React.FC = () => {
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
             {/* Chat Header Premium */}
-            <div className="px-6 py-4 bg-bg-card/90 backdrop-blur-md border-b border-border-card flex items-center justify-between shrink-0 z-10 shadow-sm">
-              <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setIsDrawerOpen(true)}>
-                <div className="relative">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-                    {selectedLead.nome?.[0]?.toUpperCase() || <User size={20} />}
-                  </div>
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-success border-2 border-bg-card rounded-full" />
-                </div>
-                
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <h4 className="text-base font-bold text-text-main group-hover:text-primary transition-colors">
-                      {selectedLead.nome || formatWhatsApp(selectedLead.whatsapp)}
-                    </h4>
-                    {(() => {
-                      const si = getStatusInfo(selectedLead)
-                      return (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${si.bg} ${si.color} border border-current/10`}>
-                          {si.icon} {si.label}
+            {(() => {
+              const statusInfo = getStatusInfo(selectedLead)
+              return (
+                <div className="px-6 py-4 bg-bg-card/90 backdrop-blur-md border-b border-border-card flex items-center justify-between shrink-0 z-10 shadow-sm">
+                  <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setIsDrawerOpen(true)}>
+                    <div className="relative">
+                      <div 
+                        className="w-11 h-11 rounded-full flex items-center justify-center text-white font-extrabold text-lg transition-transform duration-300 group-hover:scale-105"
+                        style={{
+                          background: `linear-gradient(135deg, ${statusInfo.hexColor}, ${statusInfo.hexColor}dd)`,
+                          boxShadow: `0 4px 14px ${statusInfo.hexColor}40`
+                        }}
+                      >
+                        {selectedLead.nome?.[0]?.toUpperCase() || <User size={20} />}
+                      </div>
+                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-success border-2 border-bg-card rounded-full" />
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h4 className="text-base font-extrabold text-text-main group-hover:text-primary transition-colors">
+                          {selectedLead.nome || formatWhatsApp(selectedLead.whatsapp)}
+                        </h4>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${statusInfo.bg} ${statusInfo.color} border ${statusInfo.border}`}>
+                          {statusInfo.icon} {statusInfo.label}
                         </span>
-                      )
-                    })()}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        {selectedLead.whatsapp && (
+                          <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-semibold">
+                            <Phone size={10} className="text-text-muted/60" /> {formatWhatsApp(selectedLead.whatsapp)}
+                          </span>
+                        )}
+                        {selectedLead.cidade && (
+                          <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-semibold">
+                            <MapPin size={10} className="text-text-muted/60" /> {selectedLead.cidade}
+                          </span>
+                        )}
+                        {selectedLead.temperatura && (
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
+                            selectedLead.temperatura === 'quente' ? 'bg-hot/10 text-hot border-hot/20' : selectedLead.temperatura === 'morno' ? 'bg-warm/10 text-warm border-warm/20' : 'bg-cold/10 text-cold border-cold/20'
+                          }`}>
+                            {selectedLead.temperatura}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    {selectedLead.whatsapp && (
-                      <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-medium">
-                        <Phone size={10} className="text-text-muted/60" /> {formatWhatsApp(selectedLead.whatsapp)}
-                      </span>
-                    )}
-                    {selectedLead.cidade && (
-                      <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-medium">
-                        <MapPin size={10} className="text-text-muted/60" /> {selectedLead.cidade}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-end mr-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Score</span>
-                    <span className="text-xs font-black text-text-main tabular-nums">{selectedLead.score || 0}%</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-end mr-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Score</span>
+                        <span className="text-xs font-black text-text-main tabular-nums">{selectedLead.score || 0}%</span>
+                      </div>
+                      <ScoreBar score={selectedLead.score || 0} className="w-24 h-1.5 rounded-full" />
+                    </div>
+                    <div className="w-px h-8 bg-border-card mx-1" />
+                    <button
+                      onClick={() => setIsDrawerOpen(true)}
+                      className="p-2.5 rounded-xl text-text-muted hover:text-white hover:bg-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
+                      title="Ver detalhes completos do lead"
+                    >
+                      <Info size={20} />
+                    </button>
                   </div>
-                  <ScoreBar score={selectedLead.score || 0} className="w-24 h-1.5 rounded-full" />
                 </div>
-                <div className="w-px h-8 bg-border-card mx-1" />
-                <button
-                  onClick={() => setIsDrawerOpen(true)}
-                  className="p-2.5 rounded-xl text-text-muted hover:text-white hover:bg-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
-                  title="Ver detalhes completos do lead"
-                >
-                  <Info size={20} />
-                </button>
-              </div>
-            </div>
+              )
+            })()}
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 z-10 custom-scrollbar">
 
-              {/* AI Summary Card Premium */}
+              {/* AI Summary Card Premium Glassmorphism */}
               {selectedLead.resumo_conversa && (
-                <div className="mx-auto max-w-2xl w-full bg-primary/5 border border-primary/20 rounded-2xl p-5 flex gap-4 items-start shadow-lg shadow-primary/5 backdrop-blur-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Bot size={80} />
+                <div className="mx-auto max-w-2xl w-full bg-bg-card/45 border border-border-card/70 rounded-2xl p-5 flex gap-4 items-start shadow-xl shadow-black/5 backdrop-blur-md relative overflow-hidden group transition-all duration-300 hover:border-primary/30">
+                  <div className="absolute top-0 right-0 p-4 text-primary opacity-5 group-hover:opacity-10 transition-all duration-500 group-hover:scale-110">
+                    <Bot size={90} />
                   </div>
-                  <div className="p-2.5 bg-gradient-to-br from-primary to-primary-hover rounded-xl text-white shrink-0 shadow-lg shadow-primary/30 relative z-10">
+                  <div className="p-2.5 bg-gradient-to-br from-primary to-primary-hover rounded-xl text-white shrink-0 shadow-md shadow-primary/20 relative z-10">
                     <Bot size={20} />
                   </div>
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <p className="text-[11px] font-black text-primary uppercase tracking-widest">Resumo da IA</p>
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <div className="relative z-10 space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">Resumo da IA</p>
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
                     </div>
-                    <p className="text-sm text-text-main/90 leading-relaxed font-medium">
+                    <p className="text-[13.5px] text-text-main/90 leading-relaxed font-medium">
                       {selectedLead.resumo_conversa}
                     </p>
                   </div>
@@ -423,9 +504,9 @@ export const Conversas: React.FC = () => {
               {/* Date Divider */}
               <div className="flex items-center gap-4 py-4 max-w-3xl mx-auto">
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border-card to-transparent opacity-50" />
-                <span className="text-[10px] font-bold text-text-muted/60 uppercase tracking-[0.2em] bg-bg-base/50 px-4 py-1.5 rounded-full border border-border-card/30 backdrop-blur-sm">
-                  {format(new Date(selectedLead.horario_contato), "dd 'de' MMMM, yyyy", { locale: ptBR })}
-                </span>
+                 <span className="text-[10px] font-bold text-text-muted/60 uppercase tracking-[0.2em] bg-bg-base/50 px-4 py-1.5 rounded-full border border-border-card/30 backdrop-blur-sm">
+                   {safeFormatDate(selectedLead.horario_contato || selectedLead.created_at, "dd 'de' MMMM, yyyy")}
+                 </span>
                 <div className="flex-1 h-px bg-gradient-to-l from-transparent via-border-card to-transparent opacity-50" />
               </div>
 
@@ -468,12 +549,12 @@ export const Conversas: React.FC = () => {
                           )}
 
                           <div className={`
-                            relative px-4 py-3 text-[15px] leading-relaxed shadow-sm transition-all hover:shadow-md
+                            relative px-4.5 py-3 text-[14px] md:text-[14.5px] leading-relaxed shadow-sm transition-all duration-300 border
                             ${isLead
-                              ? 'bg-primary text-white rounded-2xl rounded-br-sm shadow-primary/20 hover:shadow-primary/30'
+                              ? 'bg-primary text-white rounded-2xl rounded-tr-none border-transparent font-medium hover:shadow-md shadow-primary/10'
                               : isSystem
-                              ? 'bg-warning/10 border border-warning/20 text-warning text-center rounded-xl flex items-center gap-2 text-xs font-medium px-5'
-                              : 'bg-bg-card text-text-main border border-border-card rounded-2xl rounded-bl-sm shadow-black/10'
+                              ? 'bg-warning/10 border-warning/20 text-warning text-center rounded-xl flex items-center gap-2 text-xs font-semibold px-5 shadow-none'
+                              : 'bg-bg-card text-text-main/90 border-border-card/85 rounded-2xl rounded-tl-none hover:border-primary/25 hover:shadow-md shadow-black/5'
                             }
                           `}>
                             {isSystem && <FileText size={14} className="shrink-0 opacity-70" />}

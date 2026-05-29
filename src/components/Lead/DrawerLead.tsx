@@ -15,7 +15,7 @@ import {
   Plus,
   Check
 } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { supabaseAdmin } from '../../lib/supabase'
 import type { Lead, Interacao, FollowUp } from '../../types'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -53,7 +53,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     if (!lead) return
     try {
       // Fetch Interactions
-      const { data: interactionData } = await supabase
+      const { data: interactionData } = await supabaseAdmin
         .from('interacoes')
         .select('*')
         .eq('lead_id', lead.id)
@@ -62,7 +62,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
       if (interactionData) setInteractions(interactionData)
 
       // Fetch Follow-ups
-      const { data: followUpData } = await supabase
+      const { data: followUpData } = await supabaseAdmin
         .from('follow_ups')
         .select('*')
         .eq('lead_id', lead.id)
@@ -77,7 +77,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
   const handleConversion = async () => {
     if (!lead) return
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('leads')
         .update({ 
           convertido: true,

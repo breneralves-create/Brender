@@ -49,7 +49,7 @@ export const Leads: React.FC = () => {
   })
 
   // Sorting and Pagination
-  const [sortField, setSortField] = useState<keyof Lead>('horario_contato')
+  const [sortField, setSortField] = useState<keyof Lead>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 20
@@ -75,7 +75,7 @@ export const Leads: React.FC = () => {
       const { data, error } = await supabaseAdmin
         .from('leads')
         .select('*')
-        .order('horario_contato', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
@@ -195,7 +195,7 @@ export const Leads: React.FC = () => {
   const exportCSV = () => {
     const headers = "Nome,WhatsApp,Score,Temperatura,Produto,Origem,Status,Data\n"
     const rows = sortedLeads.map(l =>
-      `"${l.nome || 'Sem nome'}","${l.whatsapp}",${l.score || 0},"${l.temperatura || ''}","${l.produto_interesse || ''}","${l.origem || ''}","${l.status}","${l.horario_contato}"`
+      `"${l.nome || 'Sem nome'}","${l.whatsapp}",${l.score || 0},"${l.temperatura || ''}","${l.produto_interesse || ''}","${l.origem || ''}","${l.status}","${l.horario_contato || l.created_at}"`
     ).join("\n")
 
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })
@@ -349,7 +349,7 @@ export const Leads: React.FC = () => {
                   <th className="px-6 py-4">Produto</th>
                   <th className="px-6 py-4">Origem</th>
                   <th className="px-6 py-4">Encaminhado</th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('horario_contato')}>
+                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('created_at')}>
                     <div className="flex items-center gap-2">Data Contato <ArrowUpDown size={12} /></div>
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold uppercase text-text-muted tracking-wider">
@@ -409,12 +409,12 @@ export const Leads: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-xs text-text-muted font-medium">
-                        {lead.horario_contato
-                          ? format(new Date(lead.horario_contato), 'dd/MM/yyyy')
+                        {lead.horario_contato || lead.created_at
+                          ? format(new Date(lead.horario_contato || lead.created_at), 'dd/MM/yyyy')
                           : <span className="opacity-30">—</span>
                         }
                         <span className="block text-[10px] opacity-70 mt-0.5">
-                          {lead.horario_contato && format(new Date(lead.horario_contato), 'HH:mm')}
+                          {(lead.horario_contato || lead.created_at) && format(new Date(lead.horario_contato || lead.created_at), 'HH:mm')}
                           {lead.dentro_horario_comercial ? (
                             <span className="text-primary/80"> (Comercial)</span>
                           ) : (

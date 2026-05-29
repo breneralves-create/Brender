@@ -15,6 +15,7 @@ export type LeadStatus =
   | 'convertido'
   | 'sem_interesse'
   | 'fora_horario'
+  | 'conversando'
 
 export type LeadTemperatureValue = 'quente' | 'morno' | 'frio'
 
@@ -73,7 +74,7 @@ export interface Lead {
   valor_pago: number | null
 
   // Controle de horário
-  horario_contato: string
+  horario_contato?: string | null
   dentro_horario_comercial: boolean
   minutos_desde_contato: number | null
 
