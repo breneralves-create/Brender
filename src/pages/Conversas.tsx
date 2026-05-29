@@ -27,6 +27,12 @@ import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
 import type { Lead, Interacao } from '../types'
 
+type ConversationMeta = {
+  count: number
+  latestMessage: string | null
+  latestAt: string | null
+}
+
 // ── Status visual mapping matching Funil columns ──
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; border: string; hexColor: string; icon: React.ReactNode }> = {
   novo_contato:    { label: 'Novo',           color: 'text-blue-500',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    hexColor: '#3b82f6', icon: <Zap size={10} /> },
@@ -69,11 +75,17 @@ const safeFormatDate = (dateStr: string | null | undefined, formatTemplate: stri
   }
 }
 
+const getConversationState = (lead: Lead, meta?: ConversationMeta) => {
+  if (meta?.count) return { label: 'Com mensagens', className: 'bg-success/10 text-success border-success/20' }
+  if (lead.status === 'conversando' || lead.bot_ativo) return { label: 'Conversando', className: 'bg-primary/10 text-primary border-primary/20' }
+  return { label: 'Sem mensagens', className: 'bg-border-card/40 text-text-muted border-border-card' }
+}
 
 export const Conversas: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([])
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [interactions, setInteractions] = useState<Interacao[]>([])
+  const [conversationMeta, setConversationMeta] = useState<Record<string, ConversationMeta>>({})
   const [loading, setLoading] = useState(true)
   const [chatLoading, setChatLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -125,6 +137,7 @@ export const Conversas: React.FC = () => {
       if (error) throw error
       if (data) {
         setLeads(data as Lead[])
+        fetchConversationMeta()
         // Auto-select first lead if none selected and not searching
         if (data.length > 0 && !selectedLead && !searchTerm && statusFilter === 'todos') {
           setSelectedLead(data[0] as Lead)
@@ -134,6 +147,34 @@ export const Conversas: React.FC = () => {
       console.error('Erro ao buscar leads:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchConversationMeta = async () => {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('interacoes')
+        .select('lead_id, conteudo, criado_em')
+        .order('criado_em', { ascending: false })
+        .limit(1000)
+
+      if (error) throw error
+
+      const meta: Record<string, ConversationMeta> = {}
+      ;(data || []).forEach((msg) => {
+        const leadId = msg.lead_id as string
+        if (!meta[leadId]) {
+          meta[leadId] = {
+            count: 0,
+            latestMessage: msg.conteudo as string,
+            latestAt: msg.criado_em as string
+          }
+        }
+        meta[leadId].count += 1
+      })
+      setConversationMeta(meta)
+    } catch (err) {
+      console.error('Erro ao buscar resumo das conversas:', err)
     }
   }
 
@@ -280,6 +321,9 @@ export const Conversas: React.FC = () => {
                 const statusInfo = getStatusInfo(lead)
                 const isActive = selectedLead?.id === lead.id
                 const leadInitial = lead.nome ? lead.nome[0].toUpperCase() : <User size={16} />
+                const meta = conversationMeta[lead.id]
+                const conversationState = getConversationState(lead, meta)
+                const preview = meta?.latestMessage || lead.resumo_conversa || 'Nenhuma mensagem do WhatsApp salva ainda'
 
                 return (
                   <div
@@ -345,10 +389,16 @@ export const Conversas: React.FC = () => {
                       </div>
 
                       <p className={`text-xs truncate mb-2 leading-relaxed ${isActive ? 'text-text-main/80 font-medium' : 'text-text-muted/80'}`}>
-                        {lead.resumo_conversa || 'Aguardando interação...'}
+                        {preview}
                       </p>
 
                       <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${conversationState.className}`}>
+                          {conversationState.label}
+                        </span>
+
+                        <div className="w-1 h-1 rounded-full bg-border-card/60" />
+
                         {/* Status pill */}
                         <span className={`
                           inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border border-current/10
@@ -362,7 +412,7 @@ export const Conversas: React.FC = () => {
                         
                         <div className="flex items-center gap-1">
                            <span className="text-[9px] font-black text-text-muted uppercase tracking-wider tabular-nums">
-                            {lead.score || 0} pts
+                            {meta?.count ? `${meta.count} msgs` : `${lead.score || 0} pts`}
                            </span>
                         </div>
 
@@ -586,15 +636,38 @@ export const Conversas: React.FC = () => {
                   })}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center py-24 text-center h-full">
-                  <div className="w-24 h-24 rounded-full bg-bg-card/40 border border-border-card flex items-center justify-center mb-6 shadow-xl relative">
-                    <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping opacity-20" />
-                    <MessageSquare size={36} className="text-text-muted/40" />
+                <div className="flex items-center justify-center min-h-full py-12">
+                  <div className="w-full max-w-2xl rounded-2xl border border-border-card bg-bg-card/45 p-6 shadow-xl shadow-black/5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Status da conversa</p>
+                        <h4 className="text-xl font-black text-text-main font-heading">
+                          {selectedLead.nome || formatWhatsApp(selectedLead.whatsapp)}
+                        </h4>
+                        <p className="mt-2 text-sm text-text-muted leading-relaxed">
+                          Este lead ainda não tem mensagens do WhatsApp salvas no histórico. Quando a integração registrar mensagens em interacoes, elas aparecem aqui em balões automaticamente.
+                        </p>
+                      </div>
+                      {(() => {
+                        const state = getConversationState(selectedLead, conversationMeta[selectedLead.id])
+                        return (
+                          <span className={`shrink-0 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider ${state.className}`}>
+                            <MessageCircle size={14} />
+                            {state.label}
+                          </span>
+                        )
+                      })()}
+                    </div>
+
+                    {selectedLead.resumo_conversa && (
+                      <div className="mt-6 rounded-xl border border-border-card bg-bg-base/60 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Resumo disponível</p>
+                        <p className="text-sm text-text-main/90 leading-relaxed">
+                          {selectedLead.resumo_conversa}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xl font-bold text-text-main mb-2 font-heading">Nenhuma mensagem registrada</p>
-                  <p className="text-sm text-text-muted max-w-[320px] leading-relaxed">
-                    Aguardando a primeira interação deste lead. A IA irá registrar tudo automaticamente aqui.
-                  </p>
                 </div>
               )}
               <div ref={messagesEndRef} className="h-4" />

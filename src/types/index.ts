@@ -84,6 +84,8 @@ export interface Lead {
 
   // Segurança
   usuario_id: string | null
+  bot_ativo?: boolean | null
+  ultima_resposta_lead?: string | null
 }
 
 export interface Interacao {
