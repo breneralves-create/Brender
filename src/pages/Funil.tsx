@@ -120,6 +120,8 @@ export const Funil: React.FC = () => {
     // Prioridade máxima para as flags booleanas
     if (lead.convertido) return 'convertido';
     if (lead.encaminhado_vendedor) return 'encaminhado';
+    if (lead.score && lead.score >= 80) return 'em_qualificacao';
+    if (lead.temperatura === 'quente' || lead.temperatura === 'morno' || lead.temperatura === 'frio') return 'em_qualificacao';
 
     // Mapeamento de status legados/ocultos
     if (s === 'fora_horario' || s === 'primeiro_contato') s = 'novo_contato';

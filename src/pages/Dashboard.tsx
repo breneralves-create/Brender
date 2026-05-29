@@ -234,7 +234,8 @@ export const Dashboard: React.FC = () => {
   const productsData = useMemo(() => {
     const counts: Record<string, number> = {}
     filteredLeads.forEach(l => {
-      const p = l.produto_interesse || 'Não informado'
+      const p = l.produto_interesse?.trim()
+      if (!p) return
       counts[p] = (counts[p] || 0) + 1
     })
     return Object.entries(counts)
