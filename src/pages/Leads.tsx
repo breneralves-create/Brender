@@ -109,13 +109,21 @@ export const Leads: React.FC = () => {
     }
   }
 
+  const getDisplayTemperature = (lead: Lead) => {
+    if (lead.temperatura) return lead.temperatura
+    const score = lead.score || 0
+    if (score >= 80) return 'quente'
+    if (score >= 40) return 'morno'
+    return 'frio'
+  }
+
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
       const matchesSearch =
         ((lead.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase())) ||
         (lead.whatsapp || '').includes(searchTerm)
 
-      const matchesTemp = tempFilter.length === 0 || (lead.temperatura && tempFilter.includes(lead.temperatura))
+      const matchesTemp = tempFilter.length === 0 || tempFilter.includes(getDisplayTemperature(lead))
 
       const matchesHours =
         hoursFilter === 'todos' ||
@@ -388,7 +396,7 @@ export const Leads: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <LeadTemperature temperature={lead.temperatura} className="text-[10px] py-1" />
+                      <LeadTemperature temperature={getDisplayTemperature(lead)} className="text-[10px] py-1" />
                     </td>
                     <td className="px-6 py-4 text-xs font-semibold text-text-main">
                       {lead.produto_interesse || <span className="text-text-muted opacity-30">—</span>}

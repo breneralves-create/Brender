@@ -11,6 +11,8 @@ import {
   Edit3, 
   FileText, 
   Bot, 
+  BotOff,
+  BotMessageSquare,
   Trophy,
   Plus,
   Check
@@ -32,6 +34,8 @@ interface DrawerLeadProps {
   onEdit?: (lead: Lead) => void
 }
 
+const WEBHOOK_URL = 'https://mountainousmonitorlizard-n8n.cloudfy.live/webhook/ativaIA'
+
 export const DrawerLead: React.FC<DrawerLeadProps> = ({
   lead,
   isOpen,
@@ -42,10 +46,15 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
   const [interactions, setInteractions] = useState<Interacao[]>([])
   const [followUps, setFollowUps] = useState<FollowUp[]>([])
   const [copied, setCopied] = useState(false)
+  const [botLoading, setBotLoading] = useState(false)
+  const [botAtivo, setBotAtivo] = useState<boolean>(true)
+  const [botError, setBotError] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && lead) {
       fetchLeadDetails()
+      setBotAtivo(lead.bot_ativo ?? true)
+      setBotError(null)
     }
   }, [isOpen, lead])
 
@@ -100,6 +109,32 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const toggleBot = async (ativar: boolean) => {
+    if (!lead) return
+    setBotLoading(true)
+    setBotError(null)
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp: lead.whatsapp, ativo: ativar })
+      })
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.message || 'Erro ao alterar status do bot')
+      }
+
+      setBotAtivo(ativar)
+      if (onUpdate) onUpdate()
+    } catch (error) {
+      console.error('Erro ao alterar bot:', error)
+      setBotError('Nao foi possivel alterar o agente. Tente novamente.')
+    } finally {
+      setBotLoading(false)
+    }
+  }
+
   const formatWhatsApp = (num: string) => {
     const cleaned = num.replace(/\D/g, '')
     if (cleaned.length === 11) {
@@ -131,6 +166,14 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
               </button>
             </span>
             <LeadTemperature temperature={lead.temperatura} className="text-sm py-1.5" />
+            <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
+              botAtivo
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'bg-error/10 border-error/30 text-error'
+            }`}>
+              {botAtivo ? <BotMessageSquare size={14} /> : <BotOff size={14} />}
+              {botAtivo ? 'IA ativa' : 'IA pausada'}
+            </span>
           </div>
           
           <div className="p-4 bg-bg-base/30 rounded-xl border border-border-card space-y-3">
@@ -196,6 +239,64 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
               </p>
             </div>
           )}
+        </section>
+
+        <section className="space-y-4">
+          <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted px-1 flex items-center gap-2">
+            <Bot size={16} className="text-primary" />
+            Controle do Agente IA
+          </h4>
+          <div className={`p-5 rounded-xl border flex flex-col gap-4 ${
+            botAtivo
+              ? 'border-primary/30 bg-primary/5'
+              : 'border-error/30 bg-error/5'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-lg ${botAtivo ? 'bg-primary/20 text-primary' : 'bg-error/20 text-error'}`}>
+                {botAtivo ? <BotMessageSquare size={22} /> : <BotOff size={22} />}
+              </div>
+              <div>
+                <p className="text-base font-bold text-text-main">
+                  {botAtivo ? 'Agente IA respondendo este lead' : 'Atendimento humano assumido'}
+                </p>
+                <p className="text-sm text-text-muted">
+                  {botAtivo ? 'Clique para assumir a conversa' : 'Clique para devolver à IA'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 sm:justify-end">
+              {botAtivo ? (
+                <Button
+                  variant="danger"
+                  size="md"
+                  className="shrink-0 gap-2"
+                  onClick={() => toggleBot(false)}
+                  disabled={botLoading}
+                >
+                  <BotOff size={16} />
+                  {botLoading ? 'Aguarde...' : 'Pausar IA'}
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="shrink-0 gap-2"
+                  onClick={() => toggleBot(true)}
+                  disabled={botLoading}
+                >
+                  <BotMessageSquare size={16} />
+                  {botLoading ? 'Aguarde...' : 'Retomar IA'}
+                </Button>
+              )}
+            </div>
+            </div>
+            {botError && (
+              <p className="text-xs font-medium text-error bg-error/10 border border-error/20 rounded-lg px-3 py-2">
+                {botError}
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Encaminhamento */}
