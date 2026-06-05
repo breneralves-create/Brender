@@ -166,8 +166,7 @@ export const Funil: React.FC = () => {
   }
 
   const isFirstContact = (lead: Lead) => {
-    const status = lead.status || 'novo_contato'
-    return status === 'novo_contato' || status === 'primeiro_contato' || status === 'conversando'
+    return !lead.convertido
   }
 
   const getDisplayTemperature = (lead: Lead) => {
@@ -283,7 +282,7 @@ export const Funil: React.FC = () => {
                                       : 'bg-bg-base border-border-card text-text-muted'
                                   }`}>
                                     {isFirstContact(lead) ? <Sparkles size={11} /> : <RotateCcw size={11} />}
-                                    {isFirstContact(lead) ? 'Primeiro contato' : 'Cliente recorrente'}
+                                    {isFirstContact(lead) ? 'Primeiro contato' : 'Cliente convertido'}
                                   </div>
 
                                   {/* Badges Info */}
