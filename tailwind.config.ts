@@ -10,8 +10,11 @@ export default {
     extend: {
       colors: {
         base: 'var(--bg-base)',
+        'bg-base': 'var(--bg-base)',
         sidebar: 'var(--bg-sidebar)',
+        'bg-sidebar': 'var(--bg-sidebar)',
         card: 'var(--bg-card)',
+        'bg-card': 'var(--bg-card)',
         'border-card': 'var(--border-card)',
         primary: 'var(--primary)',
         'primary-hover': 'var(--primary-hover)',

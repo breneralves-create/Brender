@@ -48,12 +48,12 @@ export const Modal: React.FC<ModalProps> = ({
       
       {/* Content */}
       <div className={`
-        relative w-full ${sizes[size]} bg-bg-card border border-border-card 
+        relative w-full ${sizes[size]} max-h-[90vh] flex flex-col bg-bg-card border border-border-card 
         rounded-modal shadow-modal overflow-hidden animate-in fade-in zoom-in duration-300
       `}>
-        <div className="px-8 py-6 flex items-center justify-between border-b border-border-card">
+        <div className="px-6 py-5 sm:px-8 sm:py-6 flex items-center justify-between border-b border-border-card shrink-0">
           {title ? (
-            <h3 className="text-2xl font-bold text-text-main font-heading">{title}</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-text-main font-heading">{title}</h3>
           ) : <div />}
           <button 
             onClick={onClose}
@@ -63,12 +63,12 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        <div className="px-8 py-8">
+        <div className="px-6 py-6 sm:px-8 sm:py-8 overflow-y-auto custom-scrollbar flex-1">
           {children}
         </div>
 
         {footer && (
-          <div className="px-8 py-6 bg-bg-base/30 border-t border-border-card flex justify-end gap-3">
+          <div className="px-6 py-5 sm:px-8 sm:py-6 bg-bg-base/30 border-t border-border-card flex justify-end gap-3 shrink-0">
             {footer}
           </div>
         )}

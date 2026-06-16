@@ -14,17 +14,17 @@ export const LeadTemperature: React.FC<LeadTemperatureProps> = ({ temperature, c
     quente: {
       label: 'Quente',
       variant: 'hot' as const,
-      icon: <Flame size={14} />
+      icon: <Flame size={12} />
     },
     morno: {
       label: 'Morno',
       variant: 'warm' as const,
-      icon: <Thermometer size={14} />
+      icon: <Thermometer size={12} />
     },
     frio: {
       label: 'Frio',
       variant: 'cold' as const,
-      icon: <Snowflake size={14} />
+      icon: <Snowflake size={12} />
     }
   }
 
@@ -38,7 +38,7 @@ export const LeadTemperature: React.FC<LeadTemperatureProps> = ({ temperature, c
     <Badge 
       variant={current.variant} 
       icon={current.icon}
-      className={className}
+      className={`text-[10px] uppercase tracking-wide ${className}`}
     >
       {current.label}
     </Badge>

@@ -12,7 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
   const { userProfile } = useAuth()
 
   return (
-    <header className="h-16 bg-bg-base border-b border-border-card px-6 flex items-center justify-between z-30">
+    <header className="h-16 bg-bg-card border-b border-border-card px-6 flex items-center justify-between z-30">
       <div className="flex items-center gap-4">
         <button 
           onClick={onMenuClick}

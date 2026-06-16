@@ -15,16 +15,19 @@ import {
   BotMessageSquare,
   Trophy,
   Plus,
-  Check
+  Check,
+  MessageCircle,
+  ExternalLink
 } from 'lucide-react'
 import { supabaseAdmin } from '../../lib/supabase'
 import type { Lead, Interacao, FollowUp } from '../../types'
-import { Drawer } from '../ui/Drawer'
+import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { ScoreBar } from '../ui/ScoreBar'
 import { LeadTemperature } from '../ui/LeadTemperature'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
+import { buildWhatsAppUrl, formatWhatsAppNumber, openWhatsApp } from '../../lib/whatsapp'
 
 interface DrawerLeadProps {
   lead: Lead | null
@@ -114,38 +117,41 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     setBotLoading(true)
     setBotError(null)
     try {
-      const payload = new URLSearchParams({
-        whatsapp: lead.whatsapp,
-        ativo: String(ativar)
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          whatsapp: lead.whatsapp,
+          ativo: ativar,
+        }),
       })
 
+      const responseText = await response.text()
+      let result: { success?: boolean; message?: string } | null = null
       try {
-        const response = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          body: payload
-        })
-        const responseText = await response.text()
-        let result: { success?: boolean; message?: string } | null = null
-        try {
-          result = responseText ? JSON.parse(responseText) : null
-        } catch {
-          result = null
-        }
-
-        if (!response.ok || result?.success === false) {
-          throw new Error(result?.message || 'Erro ao alterar status do bot')
-        }
-      } catch (webhookError) {
-        console.warn('Webhook do agente indisponivel, atualizando direto no Supabase:', webhookError)
+        result = responseText ? JSON.parse(responseText) : null
+      } catch {
+        result = null
       }
 
-      const { error } = await supabaseAdmin
-        .from('leads')
-        .update({ bot_ativo: ativar })
-        .eq('id', lead.id)
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.message || `Webhook respondeu com status ${response.status}.`)
+      }
 
-      if (error) throw error
-      setBotAtivo(ativar)
+      const { data: confirmedLead, error: confirmationError } = await supabaseAdmin
+        .from('leads')
+        .select('bot_ativo')
+        .eq('id', lead.id)
+        .single()
+
+      if (confirmationError) throw confirmationError
+      if (confirmedLead.bot_ativo !== ativar) {
+        throw new Error('O webhook respondeu, mas não confirmou a alteração de bot_ativo no banco.')
+      }
+
+      setBotAtivo(confirmedLead.bot_ativo)
       if (onUpdate) onUpdate()
     } catch (error) {
       console.error('Erro ao alterar bot:', error)
@@ -155,21 +161,15 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     }
   }
 
-  const formatWhatsApp = (num: string) => {
-    const cleaned = num.replace(/\D/g, '')
-    if (cleaned.length === 11) {
-      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7)}`
-    }
-    return num
-  }
-
   if (!lead) return null
+  const whatsappUrl = buildWhatsAppUrl(lead.whatsapp, lead.nome)
 
   return (
-    <Drawer
+    <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={lead.nome || 'Lead sem nome'}
+      size="xl"
     >
       <div className="space-y-8 pb-10">
         {/* Header Section */}
@@ -177,7 +177,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-text-muted flex items-center gap-2 bg-bg-base px-3 py-1.5 rounded-full border border-border-card text-sm font-medium">
               <Phone size={14} />
-              {formatWhatsApp(lead.whatsapp)}
+              {formatWhatsAppNumber(lead.whatsapp)}
               <button 
                 onClick={() => copyToClipboard(lead.whatsapp)}
                 className="hover:text-primary transition-colors ml-1"
@@ -195,6 +195,26 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
               {botAtivo ? 'IA ativa' : 'IA pausada'}
             </span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => openWhatsApp(lead.whatsapp, lead.nome)}
+            disabled={!whatsappUrl}
+            className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 px-4 py-3.5 text-left text-[#159447] transition-all hover:border-[#25D366]/50 hover:bg-[#25D366]/15 hover:shadow-[0_10px_30px_rgba(37,211,102,0.12)] disabled:cursor-not-allowed disabled:border-border-card disabled:bg-bg-base/40 disabled:text-text-muted disabled:shadow-none"
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm">
+                <MessageCircle size={21} />
+              </span>
+              <span>
+                <span className="block text-sm font-bold">Conversar no WhatsApp</span>
+                <span className="mt-0.5 block text-xs opacity-75">
+                  {whatsappUrl ? 'Abrir conversa com mensagem inicial' : 'Número inválido ou não informado'}
+                </span>
+              </span>
+            </span>
+            <ExternalLink size={18} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </button>
           
           <div className="p-4 bg-bg-base/30 rounded-xl border border-border-card space-y-3">
             <div className="flex justify-between items-center text-sm font-medium text-text-muted">
@@ -329,11 +349,15 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
                   <CheckCircle size={20} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-text-main">Encaminhado ao Vendedor</p>
+                  <p className={`text-sm font-bold ${lead.encaminhado_vendedor ? 'text-success' : 'text-text-main'}`}>
+                    {lead.encaminhado_vendedor ? 'Encaminhado ao Vendedor' : 'Ainda não encaminhado'}
+                  </p>
                   <p className="text-xs text-text-muted">
-                    {lead.data_encaminhamento 
+                    {lead.encaminhado_vendedor && lead.data_encaminhamento
                       ? format(new Date(lead.data_encaminhamento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                      : 'Ainda não encaminhado'}
+                      : lead.encaminhado_vendedor
+                        ? 'Encaminhamento confirmado'
+                        : 'Este lead continua no atendimento da IA'}
                   </p>
                 </div>
               </div>
@@ -454,6 +478,6 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
           <FileText size={16} /> Adicionar Nota do Vendedor
         </Button>
       </div>
-    </Drawer>
+    </Modal>
   )
 }

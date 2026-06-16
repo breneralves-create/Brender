@@ -14,30 +14,34 @@ import {
   Trash2,
   Copy,
   Check,
-  Upload,
   AlertCircle
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseAdmin } from '../lib/supabase'
 import { useCompany } from '../contexts/CompanyContext'
-import type { BusinessHours, LeadScoreConfig, ApiToken, UserProfile } from '../types'
+import type { BusinessHours, CompanyConfig, LeadScoreConfig, ApiToken, UserProfile } from '../types'
 
 type Tab = 'geral' | 'usuarios' | 'tokens' | 'referencia'
 
 export const Configuracoes: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('geral')
-  const { company, scoreConfig, businessHours, refreshCompany } = useCompany()
+  const {
+    company,
+    scoreConfig,
+    businessHours,
+    refreshCompany,
+    updateCompanyLocal,
+    updateScoreConfigLocal
+  } = useCompany()
 
   // ==============================
   // Estado Global da Página
   // ==============================
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [saveMessage, setSaveMessage] = useState('')
   const [copied, setCopied] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-
-  // Empresa
+  // Nome exibido no perfil lateral
   const [companyName, setCompanyName] = useState('')
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
   // Score
   const [scoreConfigLocal, setScoreConfigLocal] = useState<LeadScoreConfig>({
@@ -68,7 +72,6 @@ export const Configuracoes: React.FC = () => {
   useEffect(() => {
     if (company) {
       setCompanyName(company.nome)
-      setLogoPreview(company.logo_url)
     }
   }, [company])
 
@@ -101,9 +104,41 @@ export const Configuracoes: React.FC = () => {
   // ==============================
   // Helpers
   // ==============================
-  const triggerToast = (status: 'success' | 'error') => {
+  const triggerToast = (status: 'success' | 'error', message = '') => {
     setSaveStatus(status)
+    setSaveMessage(message)
     setTimeout(() => setSaveStatus('idle'), 3000)
+  }
+
+  const updateConfig = async <T,>(
+    table: 'company_config' | 'lead_score_config',
+    id: number,
+    values: Record<string, string | number>
+  ): Promise<T> => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    const response = await fetch(`${supabaseUrl}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(values),
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(body || `Erro ${response.status} ao salvar`)
+    }
+
+    const updatedRows = await response.json()
+    if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+      throw new Error('Nenhum registro foi atualizado.')
+    }
+
+    return updatedRows[0] as T
   }
 
   const handleCopy = (text: string) => {
@@ -122,28 +157,43 @@ export const Configuracoes: React.FC = () => {
   // Actions — Geral
   // ==============================
   const saveCompanyName = async () => {
+    if (!company?.id || !companyName.trim()) return
+    const previousCompany = company
+    const nextName = companyName.trim()
     setIsSaving(true)
-    const { error } = await supabase
-      .from('company_config')
-      .update({ nome: companyName })
-      .eq('id', company?.id)
-    setIsSaving(false)
-    if (error) triggerToast('error')
-    else { refreshCompany(); triggerToast('success') }
+    updateCompanyLocal({ ...company, nome: nextName })
+    try {
+      const updatedCompany = await updateConfig<CompanyConfig>('company_config', company.id, {
+        nome: nextName
+      })
+      updateCompanyLocal(updatedCompany)
+      setCompanyName(updatedCompany.nome)
+      triggerToast('success', 'Nome atualizado no perfil lateral.')
+    } catch (error) {
+      updateCompanyLocal(previousCompany)
+      console.error('Erro ao salvar identificação:', error)
+      triggerToast('error', error instanceof Error ? error.message : 'Erro desconhecido.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const saveScoreConfig = async () => {
     setIsSaving(true)
-    const { error } = await supabase
-      .from('lead_score_config')
-      .update({
+    try {
+      const updatedScore = await updateConfig<LeadScoreConfig>('lead_score_config', scoreConfigLocal.id, {
         score_minimo_morno: scoreConfigLocal.score_minimo_morno,
         score_minimo_quente: scoreConfigLocal.score_minimo_quente
       })
-      .eq('id', scoreConfig?.id)
-    setIsSaving(false)
-    if (error) triggerToast('error')
-    else { refreshCompany(); triggerToast('success') }
+      updateScoreConfigLocal(updatedScore)
+      setScoreConfigLocal(updatedScore)
+      triggerToast('success', 'Configuração de score atualizada.')
+    } catch (error) {
+      console.error('Erro ao salvar score:', error)
+      triggerToast('error', error instanceof Error ? error.message : 'Erro desconhecido.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const saveBusinessHours = async () => {
@@ -155,35 +205,12 @@ export const Configuracoes: React.FC = () => {
       hora_inicio: h.aberto ? (h.hora_inicio || null) : null,
       hora_fim: h.aberto ? (h.hora_fim || null) : null,
     }))
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('business_hours')
       .upsert(upsertData, { onConflict: 'dia' })
     setIsSaving(false)
     if (error) triggerToast('error')
     else { refreshCompany(); triggerToast('success') }
-  }
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setIsUploading(true)
-    try {
-      const fileExt = file.name.split('.').pop()
-      const filePath = `logos/company_${Date.now()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage.from('company-assets').upload(filePath, file)
-      if (uploadError) throw uploadError
-      const { data: { publicUrl } } = supabase.storage.from('company-assets').getPublicUrl(filePath)
-      const { error: updateError } = await supabase.from('company_config').update({ logo_url: publicUrl }).eq('id', company?.id)
-      if (updateError) throw updateError
-      setLogoPreview(publicUrl)
-      refreshCompany()
-      triggerToast('success')
-    } catch (err) {
-      console.error(err)
-      triggerToast('error')
-    } finally {
-      setIsUploading(false)
-    }
   }
 
   // ==============================
@@ -193,7 +220,7 @@ export const Configuracoes: React.FC = () => {
     if (!newTokenLabel) return
     setIsSaving(true)
     const rawToken = `tk_prod_${crypto.randomUUID().replace(/-/g, '')}`
-    const { error } = await supabase.from('api_tokens').insert({
+    const { error } = await supabaseAdmin.from('api_tokens').insert({
       label: newTokenLabel,
       token_hash: rawToken,
       ativo: true
@@ -210,7 +237,7 @@ export const Configuracoes: React.FC = () => {
   }
 
   const disableToken = async (tokenId: string) => {
-    const { error } = await supabase.from('api_tokens').update({ ativo: false }).eq('id', tokenId)
+    const { error } = await supabaseAdmin.from('api_tokens').update({ ativo: false }).eq('id', tokenId)
     if (!error) fetchTokens()
   }
 
@@ -240,50 +267,26 @@ export const Configuracoes: React.FC = () => {
   // ==============================
   const renderGeral = () => (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Identidade */}
-      <Card title="Identidade da Empresa" subtitle="Configure o nome e a marca que aparecerão no painel.">
+      {/* Identidade exibida no perfil lateral */}
+      <Card title="Identificação no Painel" subtitle="Defina o nome da empresa ou do responsável exibido no perfil lateral. A marca Brender. permanece fixa.">
         <div className="space-y-6">
           <Input
-            label="Nome da Empresa"
+            label="Nome exibido no perfil"
+            placeholder="Ex.: BC Automação ou Brenner Castro"
             value={companyName}
             onChange={e => setCompanyName(e.target.value)}
           />
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-text-muted">Logo da Empresa</p>
-            <div className="flex items-center gap-6 p-4 bg-bg-base/50 rounded-lg border border-border-card border-dashed">
-              <div className="w-24 h-24 bg-bg-card rounded-lg border border-border-card flex items-center justify-center overflow-hidden">
-                {logoPreview
-                  ? <img src={logoPreview} alt="Logo" className="max-w-full max-h-full object-contain" />
-                  : <Upload className="text-text-muted opacity-30" size={32} />
-                }
-              </div>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <label className="cursor-pointer">
-                    <input type="file" className="hidden" onChange={handleLogoUpload} accept="image/*" disabled={isUploading} />
-                    <Button variant="secondary" size="sm" as="span" isLoading={isUploading}>
-                      {logoPreview ? 'Alterar Logo' : 'Upload Logo'}
-                    </Button>
-                  </label>
-                  {logoPreview && (
-                    <Button
-                      variant="ghost" size="sm"
-                      onClick={async () => {
-                        const { error } = await supabase.from('company_config').update({ logo_url: null }).eq('id', company?.id)
-                        if (!error) { setLogoPreview(null); refreshCompany() }
-                      }}
-                      className="text-error hover:bg-error/10"
-                    >
-                      Remover
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-text-muted">PNG, JPG ou SVG. Máximo 2MB.</p>
-              </div>
+          <div className="flex items-center gap-4 rounded-lg border border-border-card bg-bg-base/40 p-4">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary-light text-sm font-semibold text-primary">
+              {(companyName.trim() || 'U').split(' ').filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-text-main">{companyName.trim() || 'Nome do perfil'}</p>
+              <p className="mt-0.5 text-xs text-text-muted">Prévia do perfil exibido abaixo do menu lateral.</p>
             </div>
           </div>
           <div className="pt-4 border-t border-border-card flex justify-end">
-            <Button onClick={saveCompanyName} isLoading={isSaving}>Salvar Alterações</Button>
+            <Button onClick={saveCompanyName} isLoading={isSaving} disabled={!companyName.trim()}>Salvar Alterações</Button>
           </div>
         </div>
       </Card>
@@ -571,7 +574,7 @@ export const Configuracoes: React.FC = () => {
           `}>
             {saveStatus === 'success' ? <Check size={20} /> : <AlertCircle size={20} />}
             <span className="font-bold">
-              {saveStatus === 'success' ? 'Configurações salvas!' : 'Erro ao salvar. Tente novamente.'}
+              {saveMessage || (saveStatus === 'success' ? 'Configurações salvas!' : 'Erro ao salvar. Tente novamente.')}
             </span>
           </div>
         )}

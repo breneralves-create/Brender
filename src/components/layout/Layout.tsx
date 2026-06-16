@@ -23,7 +23,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           onMenuClick={() => setIsSidebarOpen(true)} 
         />
         
-        <main className="flex-1 p-6 lg:p-8">
+        <main className="flex-1 p-6 lg:p-8 bg-bg-base">
           <div className="max-w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>

@@ -9,14 +9,14 @@ import {
   Thermometer,
   Snowflake,
   CheckCircle2,
-  Trash2
+  Trash2,
+  MessageCircle
 } from 'lucide-react'
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { supabase, supabaseAdmin } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { ScoreBar } from '../components/ui/ScoreBar'
 import { LeadTemperature } from '../components/ui/LeadTemperature'
@@ -24,6 +24,7 @@ import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
 import { ConfirmModal } from '../components/ui/ConfirmModal'
 import type { Lead } from '../types'
+import { buildWhatsAppUrl, formatWhatsAppNumber, openWhatsApp } from '../lib/whatsapp'
 
 export const Leads: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -176,6 +177,11 @@ export const Leads: React.FC = () => {
     setIsDeleteModalOpen(true)
   }
 
+  const handleWhatsApp = (e: React.MouseEvent, lead: Lead) => {
+    e.stopPropagation()
+    openWhatsApp(lead.whatsapp, lead.nome)
+  }
+
   // ✅ CORRIGIDO: usa supabaseAdmin para contornar o RLS no delete
   const confirmDelete = async () => {
     if (!leadToDelete) return
@@ -217,50 +223,82 @@ export const Leads: React.FC = () => {
     document.body.removeChild(link)
   }
 
-  const formatWhatsApp = (num: string) => {
-    const cleaned = num.replace(/\D/g, '')
-    if (cleaned.length === 11) {
-      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7)}`
-    }
-    return num
+  const tempCounts = useMemo(() => ({
+    quente: leads.filter(l => getDisplayTemperature(l) === 'quente').length,
+    morno: leads.filter(l => getDisplayTemperature(l) === 'morno').length,
+    frio: leads.filter(l => getDisplayTemperature(l) === 'frio').length,
+  }), [leads])
+
+  const toggleTempCard = (temp: string) => {
+    setTempFilter(prev => prev.includes(temp) ? prev.filter(x => x !== temp) : [...prev, temp])
   }
 
   return (
     <Layout title="Gestão de Leads">
       <div className="space-y-6">
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-4 bg-hot/5 border-hot/20 flex items-center gap-4">
-            <div className="p-3 bg-hot rounded-xl text-white">
-              <Flame size={20} />
+
+        {/* Temperature Summary Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          {/* QUENTE */}
+          <button
+            onClick={() => toggleTempCard('quente')}
+            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
+              tempFilter.includes('quente')
+                ? 'bg-[#FEF3F0] border-[#F5A89A] shadow-sm'
+                : 'bg-bg-card border-border-card hover:border-[#F5A89A] hover:bg-[#FEF3F0]/40'
+            }`}
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#C0392B] flex items-center justify-center flex-shrink-0">
+              <Flame size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-bold text-hot uppercase">🔥 Quente</p>
-              <p className="text-xs text-text-muted">Score 80-100</p>
+              <p className="text-xs font-black uppercase tracking-wider text-[#C0392B]">🔥 Quente</p>
+              <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.quente}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">Score 80–100</p>
             </div>
-          </Card>
-          <Card className="p-4 bg-warm/5 border-warm/20 flex items-center gap-4">
-            <div className="p-3 bg-warm rounded-xl text-white">
-              <Thermometer size={20} />
+          </button>
+
+          {/* MORNO */}
+          <button
+            onClick={() => toggleTempCard('morno')}
+            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
+              tempFilter.includes('morno')
+                ? 'bg-[#FEF9EC] border-[#F9D589] shadow-sm'
+                : 'bg-bg-card border-border-card hover:border-[#F9D589] hover:bg-[#FEF9EC]/40'
+            }`}
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#B7770D] flex items-center justify-center flex-shrink-0">
+              <Thermometer size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-bold text-warm uppercase">🌡 Morno</p>
-              <p className="text-xs text-text-muted">Score 40-79</p>
+              <p className="text-xs font-black uppercase tracking-wider text-[#B7770D]">🌡 Morno</p>
+              <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.morno}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">Score 40–79</p>
             </div>
-          </Card>
-          <Card className="p-4 bg-cold/5 border-cold/20 flex items-center gap-4">
-            <div className="p-3 bg-cold rounded-xl text-white">
-              <Snowflake size={20} />
+          </button>
+
+          {/* FRIO */}
+          <button
+            onClick={() => toggleTempCard('frio')}
+            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
+              tempFilter.includes('frio')
+                ? 'bg-[#EFF6FF] border-[#93C5FD] shadow-sm'
+                : 'bg-bg-card border-border-card hover:border-[#93C5FD] hover:bg-[#EFF6FF]/40'
+            }`}
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#1D6FA4] flex items-center justify-center flex-shrink-0">
+              <Snowflake size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-bold text-cold uppercase">❄ Frio</p>
-              <p className="text-xs text-text-muted">Score 0-39</p>
+              <p className="text-xs font-black uppercase tracking-wider text-[#1D6FA4]">❄ Frio</p>
+              <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.frio}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">Score 0–39</p>
             </div>
-          </Card>
+          </button>
         </div>
 
         {/* Filters Header */}
-        <div className="bg-bg-card p-6 rounded-2xl border border-border-card space-y-6">
+        <div className="bg-bg-card p-5 rounded-[10px] border border-border-card space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-2">
               {(['hoje', 'este_mes', 'mes_passado', 'todos'] as const).map(range => (
@@ -268,7 +306,7 @@ export const Leads: React.FC = () => {
                   key={range}
                   onClick={() => handleRangeChange(range)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedRange === range
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      ? 'bg-[#00C48C] text-white shadow-sm'
                       : 'text-text-muted hover:text-text-main hover:bg-bg-base'
                     }`}
                 >
@@ -286,7 +324,7 @@ export const Leads: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
               <Input
@@ -297,14 +335,14 @@ export const Leads: React.FC = () => {
               />
             </div>
 
-            <div className="flex bg-bg-base rounded-button border border-border-card p-1">
+            <div className="flex flex-wrap items-center gap-2">
               {(['quente', 'morno', 'frio'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTempFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
-                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center justify-center gap-1 ${tempFilter.includes(t)
-                      ? (t === 'quente' ? 'bg-hot text-white' : t === 'morno' ? 'bg-warm text-white' : 'bg-cold text-white')
-                      : 'text-text-muted hover:text-text-main'
+                  className={`py-2 px-3 rounded-full text-xs font-bold uppercase transition-all flex items-center justify-center gap-1.5 border ${tempFilter.includes(t)
+                      ? (t === 'quente' ? 'bg-[#FEF3F0] text-[#C0392B] border-[#F5A89A]' : t === 'morno' ? 'bg-[#FEF9EC] text-[#B7770D] border-[#F9D589]' : 'bg-[#EFF6FF] text-[#1D6FA4] border-[#93C5FD]')
+                      : 'bg-bg-card text-text-muted border-border-card hover:text-text-main hover:bg-bg-base'
                     }`}
                 >
                   {t === 'quente' ? <Flame size={12} /> : t === 'morno' ? <Thermometer size={12} /> : <Snowflake size={12} />}
@@ -314,7 +352,7 @@ export const Leads: React.FC = () => {
             </div>
 
             <select
-              className="bg-bg-base border border-border-card rounded-button px-4 py-2.5 text-xs font-medium text-text-main"
+              className="bg-bg-card border border-border-card rounded-lg px-4 py-2.5 text-xs font-medium text-text-main"
               value={hoursFilter}
               onChange={e => setHoursFilter(e.target.value as any)}
             >
@@ -324,7 +362,7 @@ export const Leads: React.FC = () => {
             </select>
 
             <select
-              className="bg-bg-base border border-border-card rounded-button px-4 py-2.5 text-xs font-medium text-text-main"
+              className="bg-bg-card border border-border-card rounded-lg px-4 py-2.5 text-xs font-medium text-text-main"
               value={forwardFilter}
               onChange={e => setForwardFilter(e.target.value as any)}
             >
@@ -336,28 +374,26 @@ export const Leads: React.FC = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-bg-card rounded-2xl border border-border-card overflow-hidden shadow-sm">
+        <div className="bg-bg-card rounded-[10px] border border-border-card overflow-hidden shadow-card">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-bg-base/50 text-[10px] uppercase font-bold text-text-muted tracking-widest border-b border-border-card">
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('nome')}>
-                    <div className="flex items-center gap-2">Nome <ArrowUpDown size={12} /></div>
+                <tr className="bg-bg-base text-[10px] uppercase font-bold text-text-muted tracking-widest border-b border-border-card">
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#00C48C] transition-colors" onClick={() => toggleSort('nome')}>
+                    <div className="flex items-center gap-2">Lead <ArrowUpDown size={12} /></div>
                   </th>
                   <th className="px-6 py-4">WhatsApp</th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('cidade')}>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#00C48C] transition-colors" onClick={() => toggleSort('cidade')}>
                     <div className="flex items-center gap-2">Cidade <ArrowUpDown size={12} /></div>
                   </th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('score')}>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#00C48C] transition-colors" onClick={() => toggleSort('score')}>
                     <div className="flex items-center gap-2">Score <ArrowUpDown size={12} /></div>
                   </th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('temperatura')}>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#00C48C] transition-colors" onClick={() => toggleSort('temperatura')}>
                     <div className="flex items-center gap-2">Temperatura <ArrowUpDown size={12} /></div>
                   </th>
-                  <th className="px-6 py-4">Produto</th>
-                  <th className="px-6 py-4">Origem</th>
                   <th className="px-6 py-4">Encaminhado</th>
-                  <th className="px-6 py-4 cursor-pointer hover:text-primary transition-colors" onClick={() => toggleSort('created_at')}>
+                  <th className="px-6 py-4 cursor-pointer hover:text-[#00C48C] transition-colors" onClick={() => toggleSort('created_at')}>
                     <div className="flex items-center gap-2">Data Contato <ArrowUpDown size={12} /></div>
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold uppercase text-text-muted tracking-wider">
@@ -369,24 +405,36 @@ export const Leads: React.FC = () => {
                 {paginatedLeads.map(lead => (
                   <tr
                     key={lead.id}
-                    className="hover:bg-bg-base/30 transition-colors cursor-pointer group"
+                    className="hover:bg-bg-base/60 transition-colors cursor-pointer group"
                     onClick={() => setSelectedLead(lead)}
                   >
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-text-main group-hover:text-primary transition-colors">
+                      <p className="text-sm font-bold text-text-main group-hover:text-[#00C48C] transition-colors">
                         {lead.nome || <span className="text-text-muted italic">Sem nome</span>}
+                      </p>
+                      <p className="text-xs text-text-muted mt-1">
+                        {lead.produto_interesse || 'Nenhum produto listado'} · {lead.origem || 'WhatsApp'}
                       </p>
                     </td>
                     <td className="px-6 py-4 text-xs text-text-muted font-medium">
-                      {formatWhatsApp(lead.whatsapp)}
+                      <button
+                        type="button"
+                        onClick={(e) => handleWhatsApp(e, lead)}
+                        disabled={!buildWhatsAppUrl(lead.whatsapp, lead.nome)}
+                        className="group/whatsapp inline-flex items-center gap-2 rounded-lg px-2 py-1.5 -ml-2 transition-all hover:bg-[#25D366]/10 hover:text-[#159447] disabled:cursor-not-allowed disabled:opacity-40"
+                        title={buildWhatsAppUrl(lead.whatsapp, lead.nome) ? 'Conversar no WhatsApp' : 'WhatsApp inválido'}
+                      >
+                        <MessageCircle size={15} className="text-[#25D366] transition-transform group-hover/whatsapp:scale-110" />
+                        {formatWhatsAppNumber(lead.whatsapp)}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-xs font-semibold text-text-main">
                       {lead.cidade ? (
-                        <Badge variant="muted" className="text-xs bg-primary/10 text-primary border-primary/20">
+                        <Badge variant="muted" className="text-xs bg-[#00C48C]/10 text-[#00C48C] border-[#00C48C]/20">
                           {lead.cidade}
                         </Badge>
                       ) : (
-                        <span className="text-text-muted opacity-30">—</span>
+                        <span className="text-text-muted opacity-40">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -398,20 +446,14 @@ export const Leads: React.FC = () => {
                     <td className="px-6 py-4">
                       <LeadTemperature temperature={getDisplayTemperature(lead)} className="text-[10px] py-1" />
                     </td>
-                    <td className="px-6 py-4 text-xs font-semibold text-text-main">
-                      {lead.produto_interesse || <span className="text-text-muted opacity-30">—</span>}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="muted" className="text-[10px]">{lead.origem || 'WhatsApp'}</Badge>
-                    </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center">
                         {lead.encaminhado_vendedor ? (
-                          <div className="p-1 px-2 rounded-full bg-success/10 text-success flex items-center gap-1 text-[10px] font-bold">
+                          <div className="p-1 px-2 rounded-full bg-[#00C48C]/10 text-[#00C48C] flex items-center gap-1 text-[10px] font-bold">
                             <CheckCircle2 size={12} /> SIM
                           </div>
                         ) : (
-                          <span className="text-text-muted opacity-30">—</span>
+                          <span className="text-text-muted opacity-40">—</span>
                         )}
                       </div>
                     </td>
@@ -424,15 +466,23 @@ export const Leads: React.FC = () => {
                         <span className="block text-[10px] opacity-70 mt-0.5">
                           {(lead.horario_contato || lead.created_at) && format(new Date(lead.horario_contato || lead.created_at), 'HH:mm')}
                           {lead.dentro_horario_comercial ? (
-                            <span className="text-primary/80"> (Comercial)</span>
+                            <span className="text-[#00C48C]"> (Comercial)</span>
                           ) : (
-                            <span className="text-warning/80"> (Fora do Horário)</span>
+                            <span className="text-[#B7770D]"> (Fora do Horário)</span>
                           )}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-center">
+                      <div className="flex justify-center gap-1">
+                        <button
+                          onClick={(e) => handleWhatsApp(e, lead)}
+                          disabled={!buildWhatsAppUrl(lead.whatsapp, lead.nome)}
+                          className="p-2 text-[#159447] hover:bg-[#25D366]/10 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-30"
+                          title={buildWhatsAppUrl(lead.whatsapp, lead.nome) ? 'Abrir WhatsApp' : 'WhatsApp inválido'}
+                        >
+                          <MessageCircle size={17} />
+                        </button>
                         <button
                           onClick={(e) => handleDelete(e, lead.id)}
                           className="p-2 text-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-all"

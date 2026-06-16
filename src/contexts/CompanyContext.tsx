@@ -8,6 +8,8 @@ interface CompanyContextType {
   scoreConfig: LeadScoreConfig
   loading: boolean
   refreshCompany: () => Promise<void>
+  updateCompanyLocal: (company: CompanyConfig) => void
+  updateScoreConfigLocal: (scoreConfig: LeadScoreConfig) => void
 }
 
 const DEFAULT_SCORE_CONFIG: LeadScoreConfig = {
@@ -101,7 +103,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       businessHours,
       scoreConfig,
       loading,
-      refreshCompany: fetchCompanyData
+      refreshCompany: fetchCompanyData,
+      updateCompanyLocal: setCompany,
+      updateScoreConfigLocal: setScoreConfig
     }}>
       {children}
     </CompanyContext.Provider>

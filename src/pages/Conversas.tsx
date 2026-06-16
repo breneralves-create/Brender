@@ -242,7 +242,7 @@ export const Conversas: React.FC = () => {
 
   return (
     <Layout title="Conversas">
-      <div className="flex h-[calc(100vh-110px)] overflow-hidden rounded-2xl border border-border-card bg-bg-base shadow-2xl">
+      <div className="flex h-[calc(100vh-110px)] overflow-hidden rounded-[10px] border border-border-card bg-bg-card shadow-card">
         {/* ═══════════════════════════════════════════════════════ */}
         {/* LEFT PANEL: Contact List                                */}
         {/* ═══════════════════════════════════════════════════════ */}
@@ -452,15 +452,15 @@ export const Conversas: React.FC = () => {
         {/* CENTER PANEL: Chat / Messages                          */}
         {/* ═══════════════════════════════════════════════════════ */}
         {selectedLead ? (
-          <div className="flex-1 flex flex-col bg-bg-base/50 relative">
+          <div className="flex-1 flex flex-col bg-[#1E2435] relative">
             {/* Ambient Background Glow */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00C48C]/5 rounded-full blur-[120px] pointer-events-none" />
 
             {/* Chat Header Premium */}
             {(() => {
               const statusInfo = getStatusInfo(selectedLead)
               return (
-                <div className="px-6 py-4 bg-bg-card/90 backdrop-blur-md border-b border-border-card flex items-center justify-between shrink-0 z-10 shadow-sm">
+                <div className="px-6 py-4 bg-[#252D40] border-b border-white/10 flex items-center justify-between shrink-0 z-10 shadow-none">
                   <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setIsDrawerOpen(true)}>
                     <div className="relative">
                       <div 
@@ -472,12 +472,12 @@ export const Conversas: React.FC = () => {
                       >
                         {selectedLead.nome?.[0]?.toUpperCase() || <User size={20} />}
                       </div>
-                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-success border-2 border-bg-card rounded-full" />
+                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00C48C] border-2 border-[#252D40] rounded-full" />
                     </div>
                     
                     <div>
                       <div className="flex items-center gap-2.5">
-                        <h4 className="text-base font-extrabold text-text-main group-hover:text-primary transition-colors">
+                        <h4 className="text-base font-extrabold text-white group-hover:text-[#00C48C] transition-colors">
                           {selectedLead.nome || formatWhatsApp(selectedLead.whatsapp)}
                         </h4>
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${statusInfo.bg} ${statusInfo.color} border ${statusInfo.border}`}>
@@ -486,13 +486,13 @@ export const Conversas: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-3 mt-1">
                         {selectedLead.whatsapp && (
-                          <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-semibold">
-                            <Phone size={10} className="text-text-muted/60" /> {formatWhatsApp(selectedLead.whatsapp)}
+                          <span className="text-[11px] text-white/55 flex items-center gap-1 font-semibold">
+                            <Phone size={10} className="text-white/45" /> {formatWhatsApp(selectedLead.whatsapp)}
                           </span>
                         )}
                         {selectedLead.cidade && (
-                          <span className="text-[11px] text-text-muted/80 flex items-center gap-1 font-semibold">
-                            <MapPin size={10} className="text-text-muted/60" /> {selectedLead.cidade}
+                          <span className="text-[11px] text-white/55 flex items-center gap-1 font-semibold">
+                            <MapPin size={10} className="text-white/45" /> {selectedLead.cidade}
                           </span>
                         )}
                         {selectedLead.temperatura && (
@@ -509,15 +509,15 @@ export const Conversas: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col items-end mr-2">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Score</span>
-                        <span className="text-xs font-black text-text-main tabular-nums">{selectedLead.score || 0}%</span>
+                        <span className="text-[10px] font-bold text-white/45 uppercase tracking-wider">Score</span>
+                        <span className="text-xs font-black text-white tabular-nums">{selectedLead.score || 0}%</span>
                       </div>
                       <ScoreBar score={selectedLead.score || 0} className="w-24 h-1.5 rounded-full" />
                     </div>
-                    <div className="w-px h-8 bg-border-card mx-1" />
+                    <div className="w-px h-8 bg-white/10 mx-1" />
                     <button
                       onClick={() => setIsDrawerOpen(true)}
-                      className="p-2.5 rounded-xl text-text-muted hover:text-white hover:bg-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
+                      className="p-2.5 rounded-xl text-white/55 hover:text-white hover:bg-[#00C48C] hover:shadow-lg hover:shadow-[#00C48C]/20 transition-all duration-300"
                       title="Ver detalhes completos do lead"
                     >
                       <Info size={20} />
@@ -532,19 +532,19 @@ export const Conversas: React.FC = () => {
 
               {/* AI Summary Card Premium Glassmorphism */}
               {selectedLead.resumo_conversa && (
-                <div className="mx-auto max-w-2xl w-full bg-bg-card/45 border border-border-card/70 rounded-2xl p-5 flex gap-4 items-start shadow-xl shadow-black/5 backdrop-blur-md relative overflow-hidden group transition-all duration-300 hover:border-primary/30">
-                  <div className="absolute top-0 right-0 p-4 text-primary opacity-5 group-hover:opacity-10 transition-all duration-500 group-hover:scale-110">
+                <div className="mx-auto max-w-2xl w-full bg-[#252D40] border border-white/10 border-l-[3px] border-l-[#00C48C] rounded-[10px] p-5 flex gap-4 items-start shadow-none relative overflow-hidden group transition-all duration-300 hover:border-[#00C48C]/30">
+                  <div className="absolute top-0 right-0 p-4 text-[#00C48C] opacity-5 group-hover:opacity-10 transition-all duration-500 group-hover:scale-110">
                     <Bot size={90} />
                   </div>
-                  <div className="p-2.5 bg-gradient-to-br from-primary to-primary-hover rounded-xl text-white shrink-0 shadow-md shadow-primary/20 relative z-10">
+                  <div className="p-2.5 bg-[#00C48C]/15 rounded-xl text-[#00C48C] shrink-0 relative z-10">
                     <Bot size={20} />
                   </div>
                   <div className="relative z-10 space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">Resumo da IA</p>
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                      <p className="text-[10px] font-black text-[#00C48C] uppercase tracking-widest">Resumo da IA</p>
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00C48C] animate-ping" />
                     </div>
-                    <p className="text-[13.5px] text-text-main/90 leading-relaxed font-medium">
+                    <p className="text-[13.5px] text-white/90 leading-relaxed font-medium">
                       {selectedLead.resumo_conversa}
                     </p>
                   </div>
@@ -553,11 +553,11 @@ export const Conversas: React.FC = () => {
 
               {/* Date Divider */}
               <div className="flex items-center gap-4 py-4 max-w-3xl mx-auto">
-                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border-card to-transparent opacity-50" />
-                 <span className="text-[10px] font-bold text-text-muted/60 uppercase tracking-[0.2em] bg-bg-base/50 px-4 py-1.5 rounded-full border border-border-card/30 backdrop-blur-sm">
-                   {safeFormatDate(selectedLead.horario_contato || selectedLead.created_at, "dd 'de' MMMM, yyyy")}
-                 </span>
-                <div className="flex-1 h-px bg-gradient-to-l from-transparent via-border-card to-transparent opacity-50" />
+                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-60" />
+                  <span className="text-[10px] font-bold text-white/45 uppercase tracking-[0.2em] bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
+                    {safeFormatDate(selectedLead.horario_contato || selectedLead.created_at, "dd 'de' MMMM, yyyy")}
+                  </span>
+                <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/20 to-transparent opacity-60" />
               </div>
 
               {chatLoading ? (
@@ -604,7 +604,7 @@ export const Conversas: React.FC = () => {
                               ? 'bg-primary text-white rounded-2xl rounded-tr-none border-transparent font-medium hover:shadow-md shadow-primary/10'
                               : isSystem
                               ? 'bg-warning/10 border-warning/20 text-warning text-center rounded-xl flex items-center gap-2 text-xs font-semibold px-5 shadow-none'
-                              : 'bg-bg-card text-text-main/90 border-border-card/85 rounded-2xl rounded-tl-none hover:border-primary/25 hover:shadow-md shadow-black/5'
+                               : 'bg-[#252D40] text-white/90 border-white/10 rounded-2xl rounded-tl-none hover:border-[#00C48C]/25 hover:shadow-md shadow-black/5'
                             }
                           `}>
                             {isSystem && <FileText size={14} className="shrink-0 opacity-70" />}
@@ -616,18 +616,18 @@ export const Conversas: React.FC = () => {
                             flex items-center gap-1.5 mt-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity
                             ${isLead ? 'flex-row-reverse' : 'flex-row'}
                           `}>
-                            <span className="text-[10px] font-medium text-text-muted/50">
+                            <span className="text-[10px] font-medium text-white/40">
                               {format(new Date(msg.criado_em), 'HH:mm')}
                             </span>
                             {!isSystem && (
-                              <Check size={12} className={isLead ? 'text-primary/60' : 'text-text-muted/40'} />
+                              <Check size={12} className={isLead ? 'text-[#00C48C]/60' : 'text-white/35'} />
                             )}
                           </div>
                         </div>
 
                         {/* Lead Avatar */}
                         {isLead && (
-                          <div className={`w-8 h-8 rounded-full bg-bg-card border border-border-card flex items-center justify-center text-text-muted shrink-0 mt-auto ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
+                          <div className={`w-8 h-8 rounded-full bg-[#252D40] border border-white/10 flex items-center justify-center text-white/55 shrink-0 mt-auto ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
                             {selectedLead.nome?.[0]?.toUpperCase() || <User size={14} />}
                           </div>
                         )}
@@ -637,11 +637,11 @@ export const Conversas: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-center min-h-full py-12">
-                  <div className="w-full max-w-2xl rounded-2xl border border-border-card bg-bg-card/45 p-6 shadow-xl shadow-black/5">
+                  <div className="w-full max-w-2xl rounded-[10px] border border-white/10 bg-[#252D40] p-6 shadow-none">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">Status da conversa</p>
-                        <h4 className="text-xl font-black text-text-main font-heading">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/45 mb-2">Status da conversa</p>
+                        <h4 className="text-xl font-black text-white font-heading">
                           {selectedLead.nome || formatWhatsApp(selectedLead.whatsapp)}
                         </h4>
                       </div>
@@ -657,9 +657,9 @@ export const Conversas: React.FC = () => {
                     </div>
 
                     {selectedLead.resumo_conversa && (
-                      <div className="mt-6 rounded-xl border border-border-card bg-bg-base/60 p-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Resumo disponível</p>
-                        <p className="text-sm text-text-main/90 leading-relaxed">
+                      <div className="mt-6 rounded-xl border border-white/10 border-l-[3px] border-l-[#00C48C] bg-[#1E2435] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#00C48C] mb-2">Resumo disponível</p>
+                        <p className="text-sm text-white/90 leading-relaxed">
                           {selectedLead.resumo_conversa}
                         </p>
                       </div>
@@ -671,19 +671,19 @@ export const Conversas: React.FC = () => {
             </div>
 
             {/* Bottom Bar Premium */}
-            <div className="px-6 py-4 bg-bg-card/90 backdrop-blur-md border-t border-border-card flex items-center gap-4 shrink-0 z-10 shadow-[0_-4px_24px_-12px_rgba(0,0,0,0.5)]">
-              <div className="flex-1 flex items-center gap-3 bg-bg-base/80 rounded-xl px-5 py-3.5 border border-border-card/50 shadow-inner">
+            <div className="px-6 py-4 bg-[#252D40] border-t border-white/10 flex items-center gap-4 shrink-0 z-10 shadow-none">
+              <div className="flex-1 flex items-center gap-3 bg-[#1E2435] rounded-xl px-5 py-3.5 border border-white/10">
                 <div className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-40"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00C48C] opacity-40"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00C48C]"></span>
                 </div>
-                <span className="text-[13px] font-medium text-text-muted">
+                <span className="text-[13px] font-medium text-white/55">
                   Agente de Inteligência Artificial monitorando e respondendo em tempo real...
                 </span>
               </div>
               <button
                 onClick={() => setIsDrawerOpen(true)}
-                className="px-6 py-3.5 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary hover:text-white transition-all duration-300 flex items-center gap-2 shadow-sm"
+                className="px-6 py-3.5 bg-[#00C48C]/10 text-[#00C48C] rounded-xl text-sm font-bold hover:bg-[#00C48C] hover:text-white transition-all duration-300 flex items-center gap-2 shadow-sm"
               >
                 <Info size={16} />
                 Ficha Completa

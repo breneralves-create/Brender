@@ -68,7 +68,7 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false })
@@ -246,8 +246,15 @@ export const Dashboard: React.FC = () => {
 
   const recentHotLeads = useMemo(() => {
     return leads
-      .filter(l => l.temperatura === 'quente' || (l.score && l.score > 70))
+      .filter(l =>
+        l.encaminhado_vendedor === true ||
+        l.temperatura === 'quente' ||
+        (l.score ?? 0) >= 70
+      )
       .sort((a, b) => {
+        if (a.encaminhado_vendedor !== b.encaminhado_vendedor) {
+          return a.encaminhado_vendedor ? -1 : 1
+        }
         const dateB = new Date(b.horario_contato || b.created_at).getTime()
         const dateA = new Date(a.horario_contato || a.created_at).getTime()
         return dateB - dateA
@@ -284,14 +291,14 @@ export const Dashboard: React.FC = () => {
       <div className="space-y-8">
         {/* Filters & Real-time Indicator */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="bg-bg-card p-2 rounded-xl border border-border-card flex flex-wrap gap-2">
+          <div className="bg-bg-card p-2 rounded-[10px] border border-border-card flex flex-wrap gap-2">
             {(['todos', 'hoje', 'ontem', '7dias', 'este_mes', 'mes_passado', 'este_ano'] as const).map(range => (
               <button
                 key={range}
                 onClick={() => handleRangeChange(range)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedRange === range 
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                  ? 'bg-[#00C48C] text-white shadow-sm' 
                   : 'text-text-muted hover:text-text-main hover:bg-bg-base'
                 }`}
               >
@@ -299,10 +306,10 @@ export const Dashboard: React.FC = () => {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3 bg-bg-card/40 px-4 py-2 rounded-full border border-border-card">
+          <div className="flex items-center gap-3 bg-bg-card px-4 py-2 rounded-full border border-border-card">
             <div className="relative">
-              <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-primary animate-ping opacity-75" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#00C48C] animate-pulse" />
+              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-[#00C48C] animate-ping opacity-75" />
             </div>
             <span className="text-xs font-bold text-text-main/70 uppercase tracking-widest">Tempo Real</span>
           </div>
@@ -311,12 +318,12 @@ export const Dashboard: React.FC = () => {
         {/* Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {metrics.map((m, idx) => (
-            <Card key={idx} className="p-6 space-y-4 hover:border-primary/30 transition-all group overflow-hidden relative">
+            <Card key={idx} className="p-6 space-y-4 bg-bg-card border-border-card rounded-[10px] shadow-card hover:border-[#00C48C]/40 transition-all group overflow-hidden relative">
               {m.label === 'Leads Quentes' && (
                 <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-hot/5 rounded-full group-hover:bg-hot/10 transition-colors" />
               )}
               <div className="flex justify-between items-start">
-                <div className={`p-3 rounded-xl bg-bg-base border border-border-card group-hover:scale-110 transition-transform ${m.color}`}>
+                <div className={`p-3 rounded-[10px] bg-bg-base border border-border-card group-hover:scale-105 transition-transform ${m.color}`}>
                   <m.icon size={24} />
                 </div>
                 <div className={`flex items-center gap-1 text-xs font-bold ${m.trend > 0 ? 'text-success' : 'text-error'}`}>
@@ -333,7 +340,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Real-Time Funnel Chart */}
-        <Card className="p-6 relative overflow-hidden group">
+        <Card className="p-6 bg-bg-card border-border-card rounded-[10px] shadow-card relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4">
              <div className="flex items-center gap-2 bg-success/10 px-3 py-1.5 rounded-full border border-success/20 animate-pulse-hot">
                <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_rgba(34,197,94,0.8)] animate-blink-fast" />
@@ -349,7 +356,7 @@ export const Dashboard: React.FC = () => {
           <div className="h-[200px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={funnelData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-card)" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} stroke="var(--text-muted)" fontSize={12} fontWeight="bold" />
                 <YAxis hide />
                 <Tooltip 
@@ -376,7 +383,7 @@ export const Dashboard: React.FC = () => {
         </Card>
 
         {/* Evolution Chart */}
-        <Card className="p-6">
+        <Card className="p-6 bg-bg-card border-border-card rounded-[10px] shadow-card">
           <div className="mb-8">
             <h3 className="text-xl font-bold text-text-main font-heading">Evolução Diária de Leads</h3>
             <p className="text-sm text-text-muted">Quantidade de leads recebidos por dia no período selecionado</p>
@@ -394,7 +401,7 @@ export const Dashboard: React.FC = () => {
                     <stop offset="95%" stopColor="var(--hot)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-card)" />
                 <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
@@ -412,7 +419,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Side by Side Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <Card className="lg:col-span-3 p-6 flex flex-col">
+          <Card className="lg:col-span-3 p-6 bg-bg-card border-border-card rounded-[10px] shadow-card flex flex-col">
             <div className="mb-6">
               <h3 className="text-lg font-bold text-text-main font-heading">Dias com mais movimento</h3>
               <p className="text-xs text-text-muted">Em quais dias da semana você recebe mais leads</p>
@@ -428,7 +435,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="lg:col-span-2 p-6 flex flex-col">
+          <Card className="lg:col-span-2 p-6 bg-bg-card border-border-card rounded-[10px] shadow-card flex flex-col">
             <div className="mb-6">
               <h3 className="text-lg font-bold text-text-main font-heading">Horário dos contatos</h3>
               <p className="text-xs text-text-muted">Leads recebidos dentro e fora do horário comercial</p>
@@ -464,7 +471,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* AI Automation Banner */}
-        <div className={`p-6 border-l-4 rounded-xl flex items-center gap-6 animate-in fade-in slide-in-from-left-4 duration-700 ${
+        <div className={`p-6 border-l-4 rounded-[10px] flex items-center gap-6 animate-in fade-in slide-in-from-left-4 duration-700 ${
           company?.automacao_ativa ? 'bg-success/10 border-success' : 'bg-primary/10 border-primary'
         }`}>
           <div className={`p-4 rounded-2xl text-white shadow-lg ${
@@ -497,7 +504,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Products and Hot Leads */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6">
+          <Card className="p-6 bg-bg-card border-border-card rounded-[10px] shadow-card">
             <h3 className="text-lg font-bold text-text-main font-heading mb-6">Produtos mais procurados</h3>
             <div className="space-y-4">
               {productsData.length > 0 ? productsData.map((p, idx) => (
@@ -507,7 +514,7 @@ export const Dashboard: React.FC = () => {
                     <span className="text-text-muted">{p.value} leads</span>
                   </div>
                   <div className="w-full bg-bg-base h-2.5 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${(p.value / (productsData[0]?.value || 1)) * 100}%`, opacity: 1 - idx * 0.1 }} />
+                    <div className="h-full bg-[#00C48C] transition-all duration-1000" style={{ width: `${(p.value / (productsData[0]?.value || 1)) * 100}%`, opacity: 1 - idx * 0.1 }} />
                   </div>
                 </div>
               )) : (
@@ -516,7 +523,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="p-6 overflow-hidden relative">
+          <Card className="p-6 bg-bg-card border-border-card rounded-[10px] shadow-card overflow-hidden relative">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-text-main font-heading">Leads Prioritários (Tempo Real)</h3>
               <div className="flex items-center gap-2">
@@ -554,8 +561,14 @@ export const Dashboard: React.FC = () => {
                           </span>
                           <ScoreBar score={lead.score || 0} className="w-16 h-1" />
                         </div>
-                        <span className={`text-[9px] font-black uppercase tracking-tighter ${lead.score && lead.score > 90 ? 'text-primary' : 'text-hot'}`}>
-                          {lead.score && lead.score > 90 ? 'Urgência Máxima' : 'Lead Quente'}
+                        <span className={`text-[9px] font-black uppercase tracking-tighter ${
+                          lead.encaminhado_vendedor || (lead.score && lead.score > 90) ? 'text-primary' : 'text-hot'
+                        }`}>
+                          {lead.encaminhado_vendedor
+                            ? 'Encaminhado ao vendedor'
+                            : lead.score && lead.score > 90
+                              ? 'Urgência Máxima'
+                              : 'Lead Quente'}
                         </span>
                       </div>
                       <button

@@ -185,43 +185,40 @@ export const Funil: React.FC = () => {
     <Layout title="Funil de Vendas">
       <div className="space-y-4 flex flex-col h-[calc(100vh-140px)]">
         {/* Barra Superior - Estilo Clean */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-bg-card p-4 border border-border-card rounded-md shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-bg-card p-4 border border-border-card rounded-[10px] shadow-card">
           <div className="relative w-full max-w-md group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
             <Input 
-              className="pl-9 h-9 text-sm bg-bg-base border-border-card focus:border-primary/50 transition-all rounded-md" 
+              className="pl-9 h-9 text-sm bg-bg-card border-border-card focus:border-[#00C48C]/50 transition-all rounded-lg" 
               placeholder="Buscar no funil..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-success/10 px-3 py-1.5 rounded-md border border-success/20">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span className="text-[11px] font-bold text-success uppercase tracking-wider">Ao Vivo</span>
+            <div className="flex items-center gap-2 bg-[#00C48C]/10 px-3 py-1.5 rounded-md border border-[#00C48C]/20">
+              <div className="w-2 h-2 rounded-full bg-[#00C48C] animate-pulse" />
+              <span className="text-[11px] font-bold text-[#00C48C] uppercase tracking-wider">Ao Vivo</span>
             </div>
-            <span className="text-xs text-text-muted">|</span>
+            <span className="text-xs text-border-card">|</span>
             <span className="text-[11px] text-text-muted uppercase font-semibold">Total: {filteredLeads.length} Oportunidades</span>
           </div>
         </div>
 
         {/* Board Kanban */}
-        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-bg-base/30 rounded-md p-4 border border-border-card">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-bg-card rounded-[10px] p-4 border border-border-card">
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="flex gap-4 h-full min-w-max pb-2">
               {COLUMNS.map((col) => (
-                <div key={col.id} className="flex flex-col w-[300px] min-w-[300px] bg-[#1a1c24] rounded-md border border-[#2b2d35] overflow-hidden flex-shrink-0">
+                <div key={col.id} className="flex flex-col w-[300px] min-w-[300px] bg-bg-base rounded-[10px] border border-border-card border-t-[3px] border-t-border-card overflow-hidden flex-shrink-0">
                   {/* Cabeçalho da Coluna Sólido e Limpo */}
-                  <div 
-                    className="px-4 py-3 flex items-center justify-between border-b border-[#2b2d35]"
-                    style={{ borderTop: `4px solid ${col.hexColor}` }}
-                  >
+                  <div className="px-4 py-3 flex items-center justify-between border-b border-border-card">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-text-main tracking-tight">
                         {col.title}
                       </h3>
                     </div>
-                    <span className="bg-[#2b2d35] text-text-muted text-xs font-bold px-2 py-0.5 rounded-full">
+                    <span className="bg-bg-card text-text-muted text-xs font-bold px-2 py-0.5 rounded-full border border-border-card">
                       {getLeadsByStatus(col.id).length}
                     </span>
                   </div>
@@ -233,7 +230,7 @@ export const Funil: React.FC = () => {
                         {...provided.droppableProps}
                         ref={provided.innerRef}
                         className={`flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar transition-colors ${
-                          snapshot.isDraggingOver ? 'bg-[#2b2d35]/30' : ''
+                          snapshot.isDraggingOver ? 'bg-[#00C48C]/10' : ''
                         }`}
                       >
                         {getLeadsByStatus(col.id).map((lead, index) => (
@@ -245,15 +242,15 @@ export const Funil: React.FC = () => {
                                 {...provided.dragHandleProps}
                                 onClick={() => setSelectedLead(lead)}
                                 className={`
-                                  bg-bg-card p-3 rounded-md border border-[#2b2d35] shadow-sm
-                                  hover:border-[#40434f] hover:shadow-md cursor-pointer transition-all
-                                  ${snapshot.isDragging ? 'rotate-1 scale-[1.02] border-primary ring-1 ring-primary/20 shadow-xl' : ''}
+                                  bg-bg-card p-3 rounded-[10px] border border-border-card shadow-card
+                                  hover:border-[#00C48C]/40 hover:shadow-sm cursor-pointer transition-all
+                                  ${snapshot.isDragging ? 'rotate-1 scale-[1.02] border-[#00C48C] ring-1 ring-[#00C48C]/20 shadow-lg' : ''}
                                   group relative
                                 `}
                               >
                                 {/* Indicador lateral discreto de Score/Hot */}
                                 {lead.score && lead.score > 80 && (
-                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-hot rounded-l-md" />
+                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C0392B] rounded-l-md" />
                                 )}
 
                                 <div className="space-y-2">
@@ -261,12 +258,12 @@ export const Funil: React.FC = () => {
                                   <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                       <User size={14} className="text-text-muted flex-shrink-0" />
-                                      <p className="text-sm font-semibold text-text-main truncate group-hover:text-primary transition-colors">
+                                      <p className="text-sm font-semibold text-text-main truncate group-hover:text-[#00C48C] transition-colors">
                                         {lead.nome || lead.whatsapp}
                                       </p>
                                     </div>
                                     {lead.score && lead.score > 80 && (
-                                      <Flame size={14} className="text-hot flex-shrink-0" />
+                                      <Flame size={14} className="text-[#C0392B] flex-shrink-0" />
                                     )}
                                   </div>
 
@@ -278,7 +275,7 @@ export const Funil: React.FC = () => {
 
                                   <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wide ${
                                     isFirstContact(lead)
-                                      ? 'bg-primary/10 border-primary/20 text-primary'
+                                      ? 'bg-[#00C48C]/10 border-[#00C48C]/20 text-[#00C48C]'
                                       : 'bg-bg-base border-border-card text-text-muted'
                                   }`}>
                                     {isFirstContact(lead) ? <Sparkles size={11} /> : <RotateCcw size={11} />}
@@ -286,7 +283,7 @@ export const Funil: React.FC = () => {
                                   </div>
 
                                   {/* Badges Info */}
-                                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-[#2b2d35]">
+                                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-border-card">
                                     <div className="flex items-center gap-2">
                                       <LeadTemperature temperature={getDisplayTemperature(lead)} className="text-[10px] py-0.5 px-1.5 h-auto rounded" />
                                     </div>

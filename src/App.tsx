@@ -70,7 +70,7 @@ function AppContent() {
       } />
       
       <Route path="/configuracoes" element={
-        <ProtectedRoute adminOnly>
+        <ProtectedRoute>
           <Configuracoes />
         </ProtectedRoute>
       } />

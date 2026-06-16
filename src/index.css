@@ -34,25 +34,25 @@
 
   /* Light Mode */
   :root.light {
-    --bg-base: #F4F6FA;
+    --bg-base: #F7F8FA;
     --bg-sidebar: #FFFFFF;
     --bg-card: #FFFFFF;
-    --border-card: #E2E6F0;
-    --primary: #00A87D;
-    --primary-hover: #008A65;
-    --primary-light: #00A87D12;
-    --text-main: #1A1D27;
-    --text-muted: #6B7094;
-    --hot: #E53535;
-    --hot-light: #E5353512;
-    --warm: #D97A00;
-    --warm-light: #D97A0012;
-    --cold: #2B7FD4;
-    --cold-light: #2B7FD412;
-    --success: #00A87D;
-    --warning: #D97A00;
-    --error: #E53535;
-    --sidebar-active: #00A87D10;
+    --border-card: #E5E7EB;
+    --primary: #00C48C;
+    --primary-hover: #00A878;
+    --primary-light: #00C48C15;
+    --text-main: #1A1F2E;
+    --text-muted: #6B7280;
+    --hot: #C0392B;
+    --hot-light: #FEF3F0;
+    --warm: #B7770D;
+    --warm-light: #FEF9EC;
+    --cold: #1D6FA4;
+    --cold-light: #EFF6FF;
+    --success: #00C48C;
+    --warning: #B7770D;
+    --error: #C0392B;
+    --sidebar-active: #00C48C15;
 
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15);
