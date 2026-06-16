@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
       <div className="flex items-center gap-3">
         <div className="text-right hidden sm:block">
           <p className="text-sm font-semibold text-text-main leading-none">
-            {userProfile?.name || 'Carregando...'}
+            {userProfile?.name || 'Minha conta'}
           </p>
           <p className="text-xs text-text-muted mt-1 leading-none uppercase tracking-wider font-bold">
             {userProfile?.role === 'admin' ? 'Administrador' : 'Vendedor'}
