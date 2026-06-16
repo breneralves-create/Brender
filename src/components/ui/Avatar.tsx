@@ -15,13 +15,13 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
     xl: 'w-20 h-20 text-2xl'
   }
 
-  const initials = (name ?? '?')
+  const initials = (name ?? '')
     .split(' ')
     .filter(Boolean)
     .map((n: string) => n[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2) || '?'
+    .slice(0, 2)
 
   return (
     <div className={`
@@ -41,8 +41,10 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
             img.style.display = 'none'
           }}
         />
-      ) : (
+      ) : initials ? (
         <span>{initials}</span>
+      ) : (
+        <span className="h-3 w-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(0,196,140,0.12),0_0_16px_rgba(0,196,140,0.45)]" />
       )}
     </div>
   )
