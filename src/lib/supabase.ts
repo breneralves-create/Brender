@@ -15,20 +15,6 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-error'
 )
 
-export const supabaseAdmin = createClient(
-  supabaseUrl || '',
-  supabaseAnonKey || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
-    },
-    global: {
-      headers: {
-        // Garante que a chave service_role seja enviada corretamente para bypass do RLS
-        'x-address-mode': 'admin' 
-      }
-    }
-  }
-)
+// Backward-compatible alias. Browser code must never hold privileged server credentials.
+// Keep privileged operations behind Supabase RLS policies or Edge Functions.
+export const supabaseAdmin = supabase

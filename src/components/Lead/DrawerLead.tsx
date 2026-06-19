@@ -37,7 +37,7 @@ interface DrawerLeadProps {
   onEdit?: (lead: Lead) => void
 }
 
-const WEBHOOK_URL = 'https://mountainousmonitorlizard-n8n.cloudfy.live/webhook/ativaIA'
+const BOT_CONTROL_WEBHOOK_URL = import.meta.env.VITE_BOT_CONTROL_WEBHOOK_URL
 
 export const DrawerLead: React.FC<DrawerLeadProps> = ({
   lead,
@@ -117,7 +117,11 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     setBotLoading(true)
     setBotError(null)
     try {
-      const response = await fetch(WEBHOOK_URL, {
+      if (!BOT_CONTROL_WEBHOOK_URL) {
+        throw new Error('Webhook de controle da IA nao configurado.')
+      }
+
+      const response = await fetch(BOT_CONTROL_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

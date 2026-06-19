@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, supabaseAdmin } from '../lib/supabase'
-import type { UserProfile } from '../types'
+import type { UserProfile, UserRole } from '../types'
 
 interface AuthContextType {
   user: User | null
@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  refreshUserProfile: () => Promise<void>
   isAdmin: boolean
 }
 
@@ -17,7 +18,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [authRole, setAuthRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const fetchUserProfile = useCallback(async (id: string) => {
+    try {
+      const [{ data: profileData, error: profileError }, { data: roleData, error: roleError }] = await Promise.all([
+        supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle(),
+        supabase.rpc('current_user_role')
+      ])
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError)
+        setUserProfile(null)
+      } else {
+        setUserProfile(profileData ?? null)
+      }
+
+      if (roleError) {
+        console.error('Error fetching user role:', roleError)
+        setAuthRole(null)
+      } else {
+        const currentRole = roleData === 'admin' || roleData === 'vendedor' ? roleData : null
+        setAuthRole(currentRole)
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+      setUserProfile(null)
+      setAuthRole(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     // Safety timeout: stop loading spinner after 5 seconds no matter what
@@ -40,12 +76,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = session?.user ?? null
       setUser(currentUser)
       if (currentUser) {
-        setLoading(false)
+        setLoading(true)
         setTimeout(() => {
           void fetchUserProfile(currentUser.id)
         }, 0)
       } else {
         setUserProfile(null)
+        setAuthRole(null)
         setLoading(false)
       }
     })
@@ -54,22 +91,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
       clearTimeout(safetyTimeout)
     }
-  }, [])
+  }, [fetchUserProfile])
 
-  const fetchUserProfile = async (id: string) => {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle()
+  useEffect(() => {
+    if (!user?.id) return
 
-      if (error) throw error
-      setUserProfile(data ?? null)
-    } catch (error) {
-      console.error('Error fetching user profile:', error)
-    } finally {
-      setLoading(false)
+    const refreshProfile = () => {
+      void fetchUserProfile(user.id)
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshProfile()
+      }
+    }
+
+    window.addEventListener('focus', refreshProfile)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+
+    return () => {
+      window.removeEventListener('focus', refreshProfile)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [fetchUserProfile, user?.id])
+
+  const refreshUserProfile = async () => {
+    if (user?.id) {
+      await fetchUserProfile(user.id)
     }
   }
 
@@ -77,11 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     setUser(data.user)
-    setLoading(false)
     if (data.user) {
-      setTimeout(() => {
-        void fetchUserProfile(data.user.id)
-      }, 0)
+      setLoading(true)
+      await fetchUserProfile(data.user.id)
+    } else {
+      setLoading(false)
     }
   }
 
@@ -89,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Immediate local cleanup
     setUser(null)
     setUserProfile(null)
+    setAuthRole(null)
     localStorage.clear() // Remove local session data
     
     // Attempt to notify Supabase but don't wait for it
@@ -98,10 +147,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.assign('/login')
   }
 
-  const isAdmin = userProfile?.role === 'admin'
+  const isAdmin = userProfile?.role === 'admin' || authRole === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signIn, signOut, isAdmin }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, signIn, signOut, refreshUserProfile, isAdmin }}>
       {children}
     </AuthContext.Provider>
   )

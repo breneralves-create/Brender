@@ -82,6 +82,15 @@ export interface Lead {
   follow_up_agendado: boolean
   data_follow_up: string | null
   followup_1enviado?: string | null
+  inicio_atendimento_em?: string | null
+  followup_1_enviado?: string | null
+  data_followup_1?: string | null
+  followup_2_enviado?: string | null
+  data_followup_2?: string | null
+  followup_3_enviado?: string | null
+  data_followup_3?: string | null
+  sintese_ia?: string | null
+  ultima_atividade?: string | null
 
   // Segurança
   usuario_id: string | null

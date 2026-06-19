@@ -18,9 +18,11 @@ import {
 } from 'lucide-react'
 import { supabase, supabaseAdmin } from '../lib/supabase'
 import { useCompany } from '../contexts/CompanyContext'
+import { generateRawApiToken, hashApiToken } from '../lib/tokens'
 import type { BusinessHours, CompanyConfig, LeadScoreConfig, ApiToken, UserProfile } from '../types'
 
 type Tab = 'geral' | 'usuarios' | 'tokens' | 'referencia'
+type TokenListItem = Omit<ApiToken, 'token_hash'> & { token_hash?: string | null }
 
 export const Configuracoes: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('geral')
@@ -60,7 +62,7 @@ export const Configuracoes: React.FC = () => {
   const [newUserEmail, setNewUserEmail] = useState('')
 
   // Tokens
-  const [tokens, setTokens] = useState<ApiToken[]>([])
+  const [tokens, setTokens] = useState<TokenListItem[]>([])
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false)
   const [isRevealTokenModalOpen, setIsRevealTokenModalOpen] = useState(false)
   const [newTokenLabel, setNewTokenLabel] = useState('')
@@ -97,7 +99,10 @@ export const Configuracoes: React.FC = () => {
   }
 
   const fetchTokens = async () => {
-    const { data } = await supabase.from('api_tokens').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase
+      .from('api_tokens')
+      .select('id,label,ativo,created_by,created_at')
+      .order('created_at', { ascending: false })
     if (data) setTokens(data)
   }
 
@@ -219,10 +224,11 @@ export const Configuracoes: React.FC = () => {
   const generateToken = async () => {
     if (!newTokenLabel) return
     setIsSaving(true)
-    const rawToken = `tk_prod_${crypto.randomUUID().replace(/-/g, '')}`
+    const rawToken = generateRawApiToken()
+    const tokenHash = await hashApiToken(rawToken)
     const { error } = await supabaseAdmin.from('api_tokens').insert({
       label: newTokenLabel,
-      token_hash: rawToken,
+      token_hash: tokenHash,
       ativo: true
     })
     setIsSaving(false)

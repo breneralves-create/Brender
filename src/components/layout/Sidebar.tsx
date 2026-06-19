@@ -4,7 +4,7 @@ import {
   LayoutDashboard, 
   Users, 
   Flame,
-  MessageSquare, 
+  Target,
   Settings, 
   Code, 
   LogOut, 
@@ -23,7 +23,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { userProfile, signOut } = useAuth()
+  const { userProfile, signOut, isAdmin } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { company } = useCompany()
   const profileName = company?.nome?.trim() || userProfile?.name || 'Usuário'
@@ -32,10 +32,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Leads', icon: Users, path: '/leads' },
     { label: 'Funil', icon: Flame, path: '/funil' },
-    { label: 'Conversas', icon: MessageSquare, path: '/conversas' },
-    { label: 'Configurações', icon: Settings, path: '/configuracoes' },
-    { label: 'Doc. API', icon: Code, path: '/documentacao-api' }
-  ]
+    { label: 'Radar IA', icon: Target, path: '/conversas' },
+    { label: 'Configurações', icon: Settings, path: '/configuracoes', adminOnly: true },
+    { label: 'Doc. API', icon: Code, path: '/documentacao-api', adminOnly: true }
+  ].filter(item => !item.adminOnly || isAdmin)
 
   const SidebarItem = ({ item }: { item: typeof navItems[0] }) => {
     const Icon = item.icon

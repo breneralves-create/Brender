@@ -25,8 +25,10 @@ import { LeadModal } from '../components/Lead/LeadModal'
 import { ConfirmModal } from '../components/ui/ConfirmModal'
 import type { Lead } from '../types'
 import { buildWhatsAppUrl, formatWhatsAppNumber, openWhatsApp } from '../lib/whatsapp'
+import { useAuth } from '../contexts/AuthContext'
 
 export const Leads: React.FC = () => {
+  const { isAdmin } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -318,9 +320,11 @@ export const Leads: React.FC = () => {
               <Button variant="outline" className="gap-2" onClick={exportCSV}>
                 <Download size={18} /> Exportar CSV
               </Button>
-              <Button variant="primary" className="gap-2" onClick={() => { setLeadToEdit(null); setIsModalOpen(true); }}>
-                <Plus size={18} /> Novo Lead
-              </Button>
+              {isAdmin && (
+                <Button variant="primary" className="gap-2" onClick={() => { setLeadToEdit(null); setIsModalOpen(true); }}>
+                  <Plus size={18} /> Novo Lead
+                </Button>
+              )}
             </div>
           </div>
 
@@ -483,13 +487,15 @@ export const Leads: React.FC = () => {
                         >
                           <MessageCircle size={17} />
                         </button>
-                        <button
-                          onClick={(e) => handleDelete(e, lead.id)}
-                          className="p-2 text-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-all"
-                          title="Excluir Lead"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => handleDelete(e, lead.id)}
+                            className="p-2 text-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                            title="Excluir Lead"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

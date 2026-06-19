@@ -18,6 +18,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { Input } from '../components/ui/Input'
+import { generateRawApiToken, hashApiToken } from '../lib/tokens'
 import type { ApiToken } from '../types'
 
 // --- Types & Interfaces ---
@@ -46,6 +47,8 @@ interface Endpoint {
   resposta: string
   erros: ErrorResponse[]
 }
+
+type TokenListItem = Omit<ApiToken, 'token_hash'> & { token_hash?: string | null }
 
 // --- Constants & Data ---
 
@@ -389,8 +392,8 @@ const CodeBlock: React.FC<{ code: string, title?: string, language?: string, typ
 // --- Main Page Component ---
 
 export const DocumentacaoAPI: React.FC = () => {
-  const [tokens, setTokens] = useState<ApiToken[]>([])
-  const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null)
+  const [tokens, setTokens] = useState<TokenListItem[]>([])
+  const [selectedToken, setSelectedToken] = useState<TokenListItem | null>(null)
   const [activeSection, setActiveSection] = useState('')
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false)
   const [isRevealTokenModalOpen, setIsRevealTokenModalOpen] = useState(false)
@@ -403,7 +406,7 @@ export const DocumentacaoAPI: React.FC = () => {
   const fetchTokens = async () => {
     const { data } = await supabase
       .from('api_tokens')
-      .select('*')
+      .select('id,label,ativo,created_by,created_at')
       .eq('ativo', true)
       .order('created_at', { ascending: false })
     
@@ -416,10 +419,11 @@ export const DocumentacaoAPI: React.FC = () => {
   const generateToken = async () => {
     if (!newTokenLabel) return
     setIsSaving(true)
-    const rawToken = `tk_prod_${crypto.randomUUID().replace(/-/g, '')}`
+    const rawToken = generateRawApiToken()
+    const tokenHash = await hashApiToken(rawToken)
     const { error } = await supabase.from('api_tokens').insert({
       label: newTokenLabel,
-      token_hash: rawToken,
+      token_hash: tokenHash,
       ativo: true
     })
     setIsSaving(false)
@@ -459,8 +463,7 @@ export const DocumentacaoAPI: React.FC = () => {
 
   const maskedToken = useMemo(() => {
     if (!selectedToken) return '{TOKEN}'
-    const raw = selectedToken.token_hash || '••••••••'
-    return `••••••${raw.slice(-8)}`
+    return '••••••••••••••••'
   }, [selectedToken])
 
   const scrollToSection = (id: string) => {

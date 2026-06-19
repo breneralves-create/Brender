@@ -27,11 +27,13 @@ import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
 import { ConfirmModal } from '../components/ui/ConfirmModal'
 import { useCompany } from '../contexts/CompanyContext'
+import { useAuth } from '../contexts/AuthContext'
 import type { Lead } from '../types'
 import { Badge } from '../components/ui/Badge'
 
 export const Dashboard: React.FC = () => {
   const { company, refreshCompany } = useCompany()
+  const { isAdmin } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [isToggling, setIsToggling] = useState(false)
   // ✅ CORREÇÃO: padrão agora é 'todos' para mostrar TODOS os leads sempre
@@ -571,13 +573,15 @@ export const Dashboard: React.FC = () => {
                               : 'Lead Quente'}
                         </span>
                       </div>
-                      <button
-                        onClick={(e) => handleDelete(e, lead.id)}
-                        className="p-2 text-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-all"
-                        title="Excluir Lead"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => handleDelete(e, lead.id)}
+                          className="p-2 text-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                          title="Excluir Lead"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))

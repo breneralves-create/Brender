@@ -70,13 +70,13 @@ function AppContent() {
       } />
       
       <Route path="/configuracoes" element={
-        <ProtectedRoute>
+        <ProtectedRoute adminOnly>
           <Configuracoes />
         </ProtectedRoute>
       } />
       
       <Route path="/documentacao-api" element={
-        <ProtectedRoute>
+        <ProtectedRoute adminOnly>
           <DocumentacaoAPI />
         </ProtectedRoute>
       } />
