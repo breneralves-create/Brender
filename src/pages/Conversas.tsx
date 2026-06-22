@@ -12,7 +12,6 @@ import {
   Flame,
   Info,
   ListChecks,
-  MessageSquare,
   Phone,
   PlayCircle,
   Search,
@@ -21,9 +20,8 @@ import {
   Target,
   Trophy,
   User,
-  Zap,
 } from 'lucide-react'
-import { differenceInHours, differenceInMinutes, format, formatDistanceToNow } from 'date-fns'
+import { differenceInHours, format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { supabaseAdmin } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
@@ -248,16 +246,6 @@ const getTemperatureLabel = (lead: LeadDb) => {
   if (score >= 70) return 'quente'
   if (score >= 40) return 'morno'
   return 'frio'
-}
-
-const getStatusLabel = (lead: LeadDb) => {
-  if (lead.convertido) return 'Convertido'
-  if (lead.encaminhado_vendedor) return 'Encaminhado'
-  if (lead.status === 'follow_up') return 'Follow-up'
-  if (lead.status === 'em_qualificacao') return 'Qualificacao'
-  if (lead.status === 'proposta_enviada') return 'Proposta'
-  if (lead.status === 'sem_interesse') return 'Sem interesse'
-  return 'Novo contato'
 }
 
 const getDueFollowUp = (lead: LeadDb, followUps: FollowUp[]) => {
@@ -532,7 +520,7 @@ export const Conversas: React.FC = () => {
 
     return [
       {
-        label: 'Vendas em risco',
+        label: 'Risco',
         value: hotStalled + closing + dueFollowUps,
         hint: 'pedem acao hoje',
         icon: AlertTriangle,
@@ -540,7 +528,7 @@ export const Conversas: React.FC = () => {
         className: 'text-red-400 bg-red-500/10 border-red-500/20',
       },
       {
-        label: 'Quentes parados',
+        label: 'Quentes',
         value: hotStalled,
         hint: 'score alto sem movimento',
         icon: Flame,
@@ -548,7 +536,7 @@ export const Conversas: React.FC = () => {
         className: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
       },
       {
-        label: 'Follow-ups vencidos',
+        label: 'Follow-ups',
         value: dueFollowUps,
         hint: 'retornos prometidos',
         icon: CalendarClock,
@@ -556,7 +544,7 @@ export const Conversas: React.FC = () => {
         className: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
       },
       {
-        label: 'Oportunidades abertas',
+        label: 'Abertas',
         value: nonConverted,
         hint: 'ainda podem virar venda',
         icon: Target,
@@ -564,7 +552,7 @@ export const Conversas: React.FC = () => {
         className: 'text-primary bg-primary/10 border-primary/20',
       },
       {
-        label: 'IA com lead forte',
+        label: 'IA forte',
         value: aiHot,
         hint: 'humano pode assumir',
         icon: Bot,
@@ -773,40 +761,46 @@ export const Conversas: React.FC = () => {
   return (
     <Layout title="Radar Comercial">
       <div className="space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-          {metrics.map((metric) => {
-            const metricActive = activeFilter === metric.filter
-            return (
-            <button
-              key={metric.label}
-              type="button"
-              onClick={() => selectFilter(metric.filter)}
-              className={`rounded-[10px] border bg-bg-card p-4 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg ${
-                metricActive ? 'border-primary/60 ring-2 ring-primary/10' : 'border-border-card'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className={`h-10 w-10 rounded-xl border flex items-center justify-center ${metric.className}`}>
-                  <metric.icon size={19} />
-                </div>
-                <span className="text-3xl font-black text-text-main tabular-nums">{metric.value}</span>
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-black uppercase tracking-wider text-text-main">{metric.label}</p>
-                <p className="mt-0.5 text-[11px] text-text-muted">{metric.hint}</p>
-              </div>
-            </button>
-            )
-          })}
+        <div className="rounded-[10px] border border-border-card bg-bg-card px-4 py-3 shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Comando comercial</p>
+              <p className="mt-1 text-sm font-bold text-text-main">{missions.length} missoes ativas</p>
+            </div>
+
+            <div className="flex max-w-full gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {metrics.map((metric) => {
+                const metricActive = activeFilter === metric.filter
+                return (
+                  <button
+                    key={metric.label}
+                    type="button"
+                    onClick={() => selectFilter(metric.filter)}
+                    className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-black transition-all ${
+                      metricActive
+                        ? 'border-primary bg-primary text-[#0F1117]'
+                        : 'border-border-card bg-bg-base text-text-muted hover:border-primary/40 hover:text-text-main'
+                    }`}
+                  >
+                    <metric.icon size={14} />
+                    <span>{metric.label}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${metricActive ? 'bg-black/10' : 'bg-border-card/70 text-text-main'}`}>
+                      {metric.value}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[430px_minmax(0,1fr)] gap-5 min-h-[650px] h-[calc(100vh-260px)]">
+        <div className="grid grid-cols-1 xl:grid-cols-[390px_minmax(0,1fr)] gap-5 min-h-[650px] h-[calc(100vh-225px)]">
           <aside className="flex min-h-0 flex-col rounded-[10px] border border-border-card bg-bg-card shadow-card overflow-hidden">
-            <div className="border-b border-border-card p-4 space-y-4">
+            <div className="border-b border-border-card p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Fila de missoes</p>
-                  <h2 className="mt-1 text-lg font-black text-text-main">Onde o dinheiro pode escapar</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Fila</p>
+                  <h2 className="mt-1 text-lg font-black text-text-main">Prioridades</h2>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-black text-primary">
@@ -828,7 +822,7 @@ export const Conversas: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
                 <Input
                   className="pl-9 h-10 bg-bg-base"
-                  placeholder="Buscar lead, produto ou missao..."
+                  placeholder="Buscar lead..."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
@@ -905,11 +899,11 @@ export const Conversas: React.FC = () => {
                               </div>
                             </div>
 
-                            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-muted">
-                              {mission.reason}
-                            </p>
+                          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-muted">
+                            {mission.reason}
+                          </p>
 
-                            <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="mt-3 flex items-center justify-between gap-3">
                               <div className="flex min-w-0 items-center gap-2">
                                 <ScoreBar score={mission.lead.score || 0} className="h-1.5 w-24" />
                                 <span className="truncate text-[10px] font-bold text-text-muted">{mission.dueLabel}</span>
@@ -947,15 +941,15 @@ export const Conversas: React.FC = () => {
                 />
 
                 <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-                  <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+                  <div className="mx-auto max-w-5xl">
                     <div className="space-y-5">
                       <DecisionCard mission={selectedMission} />
 
-                      <div className="rounded-[10px] border border-white/10 bg-[#252D40] p-5">
+                      <div className="rounded-[10px] border border-white/10 bg-[#252D40] p-4">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#00C48C]">Mensagem pronta</p>
-                            <h3 className="mt-1 text-lg font-black text-white">Resposta sugerida pela IA</h3>
+                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#00C48C]">Mensagem</p>
+                            <h3 className="mt-1 text-base font-black text-white">Sugestao da IA</h3>
                           </div>
                           <button
                             type="button"
@@ -967,55 +961,51 @@ export const Conversas: React.FC = () => {
                           </button>
                         </div>
 
-                        <div className="mt-4 rounded-xl border border-white/10 bg-[#1E2435] p-4">
+                        <div className="mt-4 rounded-lg border border-white/10 bg-[#1E2435] p-4">
                           <p className="text-sm leading-relaxed text-white/90">
                             {selectedMission.suggestedMessage}
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
                         <button
                           type="button"
                           onClick={handleMarkConverted}
                           disabled={actionLoading === 'convert'}
-                          className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-left text-emerald-300 transition-all hover:bg-emerald-500 hover:text-[#0F1117] disabled:opacity-60"
+                          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-300 transition-all hover:bg-emerald-500 hover:text-[#0F1117] disabled:opacity-60"
                         >
-                          <Trophy size={20} />
-                          <p className="mt-3 text-sm font-black">Marcar convertido</p>
-                          <p className="mt-1 text-xs opacity-75">Fecha a oportunidade no radar.</p>
+                          <Trophy size={17} />
+                          Convertido
                         </button>
 
                         <button
                           type="button"
                           onClick={openSchedulePanel}
                           disabled={actionLoading === 'schedule'}
-                          className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-left text-amber-300 transition-all hover:bg-amber-500 hover:text-[#0F1117] disabled:opacity-60"
+                          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm font-black text-amber-300 transition-all hover:bg-amber-500 hover:text-[#0F1117] disabled:opacity-60"
                         >
-                          <CalendarClock size={20} />
-                          <p className="mt-3 text-sm font-black">Agendar proxima acao</p>
-                          <p className="mt-1 text-xs opacity-75">Cria follow-up real e nota no historico.</p>
+                          <CalendarClock size={17} />
+                          Agendar
                         </button>
 
                         <button
                           type="button"
                           onClick={handleMarkHandled}
                           disabled={actionLoading === 'handled'}
-                          className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-4 text-left text-cyan-300 transition-all hover:bg-cyan-500 hover:text-[#0F1117] disabled:opacity-60"
+                          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-sm font-black text-cyan-300 transition-all hover:bg-cyan-500 hover:text-[#0F1117] disabled:opacity-60"
                         >
-                          <CheckCircle2 size={20} />
-                          <p className="mt-3 text-sm font-black">Missao tratada</p>
-                          <p className="mt-1 text-xs opacity-75">Registra que o vendedor agiu.</p>
+                          <CheckCircle2 size={17} />
+                          Tratada
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setIsDrawerOpen(true)}
-                          className="rounded-xl border border-white/10 bg-white/5 p-4 text-left text-white/75 transition-all hover:border-[#00C48C]/40 hover:text-[#00C48C]"
+                          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-black text-white/75 transition-all hover:border-[#00C48C]/40 hover:text-[#00C48C]"
                         >
-                          <Info size={20} />
-                          <p className="mt-3 text-sm font-black">Abrir ficha completa</p>
-                          <p className="mt-1 text-xs opacity-75">Ver historico, IA e controles.</p>
+                          <Info size={17} />
+                          Ficha
                         </button>
                       </div>
 
@@ -1032,14 +1022,11 @@ export const Conversas: React.FC = () => {
                       )}
 
                       {isScheduleOpen && (
-                        <div className="rounded-[10px] border border-amber-500/25 bg-amber-500/10 p-5 text-amber-50">
+                        <div className="rounded-[10px] border border-amber-500/25 bg-[#2C2A2F] p-5 text-amber-50">
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Proxima acao</p>
-                              <h3 className="mt-1 text-lg font-black text-white">Agendar retorno comercial</h3>
-                              <p className="mt-1 text-xs leading-relaxed text-white/55">
-                                Isso nao envia WhatsApp sozinho. O lead volta para o radar no horario escolhido.
-                              </p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Agenda</p>
+                              <h3 className="mt-1 text-lg font-black text-white">Proxima acao</h3>
                             </div>
                             <button
                               type="button"
@@ -1097,8 +1084,6 @@ export const Conversas: React.FC = () => {
                         </div>
                       )}
                     </div>
-
-                    <LeadIntelPanel mission={selectedMission} />
                   </div>
                 </div>
               </div>
@@ -1200,147 +1185,34 @@ const DecisionCard: React.FC<{ mission: Mission }> = ({ mission }) => {
 
   return (
     <div className={`rounded-[10px] border bg-[#252D40] p-5 ${style.border}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${style.bg} ${style.border} ${style.text}`}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${style.bg} ${style.border} ${style.text}`}>
             <Icon size={22} />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Diagnostico comercial</p>
-            <h3 className="mt-1 text-2xl font-black text-white">{mission.headline}</h3>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/65">{mission.reason}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Prioridade</p>
+            <h3 className="mt-1 truncate text-2xl font-black text-white">{mission.headline}</h3>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[#1E2435] px-4 py-3 text-center">
-          <p className="text-[10px] font-black uppercase tracking-wider text-white/45">Risco</p>
-          <p className={`mt-1 text-3xl font-black tabular-nums ${style.text}`}>{mission.riskScore}</p>
+        <div className="rounded-xl border border-white/10 bg-[#1E2435] px-4 py-2 text-right">
+          <p className="text-[9px] font-black uppercase tracking-wider text-white/35">Risco</p>
+          <p className={`text-2xl font-black tabular-nums ${style.text}`}>{mission.riskScore}</p>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <IntelBlock
-          icon={CheckCircle2}
-          title="Por que pode comprar"
-          text={mission.buySignal}
-          tone="success"
-        />
-        <IntelBlock
-          icon={AlertTriangle}
-          title="Onde pode perder"
-          text={mission.lossRisk}
-          tone="warning"
-        />
-        <IntelBlock
-          icon={Zap}
-          title="Proxima melhor acao"
-          text={mission.nextAction}
-          tone="primary"
-        />
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3">
+        <div className="rounded-xl border border-white/10 bg-[#1E2435] px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-wider text-white/35">Sinal</p>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-white/75">{mission.reason}</p>
+        </div>
+
+        <div className="rounded-xl border border-[#00C48C]/20 bg-[#00C48C]/10 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-wider text-[#00C48C]">Acao</p>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-white/85">{mission.nextAction}</p>
+        </div>
       </div>
     </div>
-  )
-}
-
-const IntelBlock: React.FC<{
-  icon: IconComponent
-  title: string
-  text: string
-  tone: 'success' | 'warning' | 'primary'
-}> = ({ icon: Icon, title, text, tone }) => {
-  const classes = {
-    success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
-    warning: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
-    primary: 'border-[#00C48C]/20 bg-[#00C48C]/10 text-[#00C48C]',
-  }[tone]
-
-  return (
-    <div className={`rounded-xl border p-4 ${classes}`}>
-      <div className="flex items-center gap-2">
-        <Icon size={16} />
-        <p className="text-[10px] font-black uppercase tracking-wider">{title}</p>
-      </div>
-      <p className="mt-3 text-xs leading-relaxed text-white/75">{text}</p>
-    </div>
-  )
-}
-
-const LeadIntelPanel: React.FC<{ mission: Mission }> = ({ mission }) => {
-  const lead = mission.lead
-  const summary = getSummary(lead)
-  const activityDate = parseDate(getActivityDate(lead))
-  const minutes = activityDate ? differenceInMinutes(new Date(), activityDate) : 0
-
-  const facts = [
-    { label: 'Status', value: getStatusLabel(lead), icon: Target },
-    { label: 'Temperatura', value: getTemperatureLabel(lead), icon: Flame },
-    { label: 'Intencao', value: lead.intencao_compra || 'Nao informada', icon: Sparkles },
-    { label: 'Urgencia', value: lead.urgencia?.replace('_', ' ') || 'Nao informada', icon: Clock },
-    { label: 'Orcamento', value: lead.orcamento_informado ? 'Informado' : 'Nao informado', icon: Clipboard },
-    { label: 'Origem', value: lead.origem || 'Nao informada', icon: ArrowUpRight },
-  ]
-
-  return (
-    <aside className="space-y-4">
-      <div className="rounded-[10px] border border-white/10 bg-[#252D40] p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Score de fechamento</p>
-        <div className="mt-4 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-5xl font-black text-white tabular-nums">{lead.score || 0}</p>
-            <p className="mt-1 text-xs font-bold text-white/45">pontos de qualificacao</p>
-          </div>
-          <div className="mb-2 rounded-xl border border-[#00C48C]/20 bg-[#00C48C]/10 px-3 py-2 text-right">
-            <p className="text-[10px] font-black uppercase text-[#00C48C]">Parado</p>
-            <p className="text-sm font-black text-white">
-              {minutes < 60 ? `${Math.max(0, minutes)}min` : `${mission.staleHours}h`}
-            </p>
-          </div>
-        </div>
-        <ScoreBar score={lead.score || 0} className="mt-4 h-2" />
-      </div>
-
-      <div className="rounded-[10px] border border-white/10 bg-[#252D40] p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Dados que importam</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {facts.map((fact) => (
-            <div key={fact.label} className="rounded-xl border border-white/10 bg-[#1E2435] p-3">
-              <fact.icon size={14} className="text-[#00C48C]" />
-              <p className="mt-2 text-[9px] font-black uppercase tracking-wider text-white/35">{fact.label}</p>
-              <p className="mt-1 truncate text-xs font-bold capitalize text-white/85">{fact.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-[10px] border border-white/10 bg-[#252D40] p-5">
-        <div className="flex items-center gap-2 text-[#00C48C]">
-          <MessageSquare size={16} />
-          <p className="text-[10px] font-black uppercase tracking-[0.22em]">Sintese IA</p>
-        </div>
-        <p className="mt-3 text-sm leading-relaxed text-white/75">
-          {summary || 'Ainda nao existe sintese suficiente. A missao principal e qualificar melhor este lead.'}
-        </p>
-      </div>
-
-      <div className="rounded-[10px] border border-white/10 bg-[#252D40] p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Produto e contexto</p>
-        <div className="mt-4 space-y-3 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-white/45">Produto</span>
-            <span className="text-right font-bold text-white">{lead.produto_interesse || 'Nao informado'}</span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-white/45">Cidade</span>
-            <span className="text-right font-bold text-white">{lead.cidade || 'Nao informada'}</span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-white/45">Ultima atividade</span>
-            <span className="text-right font-bold text-white">
-              {activityDate ? format(activityDate, "dd/MM 'as' HH:mm", { locale: ptBR }) : 'Sem data'}
-            </span>
-          </div>
-        </div>
-      </div>
-    </aside>
   )
 }
