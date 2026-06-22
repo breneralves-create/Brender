@@ -72,13 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null
       setUser(currentUser)
       if (currentUser) {
-        if (event === 'SIGNED_IN') {
-          setLoading(true)
-        }
         setTimeout(() => {
           void fetchUserProfile(currentUser.id)
         }, 0)

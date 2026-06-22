@@ -427,16 +427,20 @@ export const Conversas: React.FC = () => {
   const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null)
 
   useEffect(() => {
-    fetchRadarData()
+    void fetchRadarData(true)
+
+    const refreshRadarData = () => {
+      void fetchRadarData(false)
+    }
 
     const leadsChannel = supabaseAdmin
       .channel('radar_leads')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, fetchRadarData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, refreshRadarData)
       .subscribe()
 
     const followUpsChannel = supabaseAdmin
       .channel('radar_followups')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'follow_ups' }, fetchRadarData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follow_ups' }, refreshRadarData)
       .subscribe()
 
     return () => {
@@ -445,8 +449,8 @@ export const Conversas: React.FC = () => {
     }
   }, [])
 
-  const fetchRadarData = async () => {
-    setLoading(true)
+  const fetchRadarData = async (showLoading = false) => {
+    if (showLoading) setLoading(true)
     try {
       const { data, error } = await supabaseAdmin
         .from('leads')
@@ -467,7 +471,7 @@ export const Conversas: React.FC = () => {
     } catch (err) {
       console.error('Erro ao carregar radar comercial:', err)
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
@@ -620,7 +624,7 @@ export const Conversas: React.FC = () => {
         now
       )
 
-      await fetchRadarData()
+      await fetchRadarData(false)
       setActionFeedback({ type: 'success', text: 'Lead marcado como convertido e historico atualizado.' })
     } catch (err) {
       console.error('Erro ao marcar conversao:', err)
@@ -686,7 +690,7 @@ export const Conversas: React.FC = () => {
         now
       )
 
-      await fetchRadarData()
+      await fetchRadarData(false)
       setIsScheduleOpen(false)
       setActionFeedback({ type: 'success', text: 'Proxima acao agendada e registrada no historico do lead.' })
     } catch (err) {
@@ -746,7 +750,7 @@ export const Conversas: React.FC = () => {
         now
       )
 
-      await fetchRadarData()
+      await fetchRadarData(false)
       setActionFeedback({ type: 'success', text: 'Missao marcada como tratada e registrada no historico.' })
     } catch (err) {
       console.error('Erro ao marcar missao como tratada:', err)
