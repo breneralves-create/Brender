@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { 
@@ -53,15 +53,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
   const [botAtivo, setBotAtivo] = useState<boolean>(true)
   const [botError, setBotError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (isOpen && lead) {
-      fetchLeadDetails()
-      setBotAtivo(lead.bot_ativo ?? true)
-      setBotError(null)
-    }
-  }, [isOpen, lead])
-
-  const fetchLeadDetails = async () => {
+  const fetchLeadDetails = useCallback(async () => {
     if (!lead) return
     try {
       // Fetch Interactions
@@ -84,7 +76,15 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     } catch (error) {
       console.error('Erro ao buscar detalhes do lead:', error)
     }
-  }
+  }, [lead])
+
+  useEffect(() => {
+    if (isOpen && lead) {
+      void fetchLeadDetails()
+      setBotAtivo(lead.bot_ativo ?? true)
+      setBotError(null)
+    }
+  }, [fetchLeadDetails, isOpen, lead])
 
   const handleConversion = async () => {
     if (!lead) return

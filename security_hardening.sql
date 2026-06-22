@@ -34,11 +34,19 @@ alter table public.lead_score_config enable row level security;
 alter table public.api_tokens enable row level security;
 
 drop policy if exists "users_select_self_or_admin" on public.users;
-create policy "users_select_self_or_admin"
+drop policy if exists "users_select_self" on public.users;
+create policy "users_select_self"
 on public.users
 for select
 to authenticated
-using (id = auth.uid() or public.is_admin());
+using (id = auth.uid());
+
+drop policy if exists "users_admin_select" on public.users;
+create policy "users_admin_select"
+on public.users
+for select
+to authenticated
+using (public.is_admin());
 
 drop policy if exists "users_admin_manage" on public.users;
 create policy "users_admin_manage"

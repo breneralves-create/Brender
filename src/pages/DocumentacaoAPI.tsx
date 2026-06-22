@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { 
   Terminal, 
   Copy, 
@@ -403,7 +403,7 @@ export const DocumentacaoAPI: React.FC = () => {
 
   const baseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://projeto.supabase.co') + '/functions/v1'
 
-  const fetchTokens = async () => {
+  const fetchTokens = useCallback(async () => {
     const { data } = await supabase
       .from('api_tokens')
       .select('id,label,ativo,created_by,created_at')
@@ -414,7 +414,7 @@ export const DocumentacaoAPI: React.FC = () => {
       setTokens(data)
       if (data.length > 0) setSelectedToken(data[0])
     }
-  }
+  }, [])
 
   const generateToken = async () => {
     if (!newTokenLabel) return
@@ -436,7 +436,7 @@ export const DocumentacaoAPI: React.FC = () => {
     }
   }
 
-  const setupIntersectionObserver = () => {
+  const setupIntersectionObserver = useCallback(() => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -451,15 +451,19 @@ export const DocumentacaoAPI: React.FC = () => {
     })
 
     return () => observer.disconnect()
-  }
+  }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/rules-of-hooks, @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    fetchTokens()
-    // @ts-ignore
-    setupIntersectionObserver()
-  }, [])
+    const fetchTimer = window.setTimeout(() => {
+      void fetchTokens()
+    }, 0)
+    const disconnectObserver = setupIntersectionObserver()
+
+    return () => {
+      window.clearTimeout(fetchTimer)
+      disconnectObserver()
+    }
+  }, [fetchTokens, setupIntersectionObserver])
 
   const maskedToken = useMemo(() => {
     if (!selectedToken) return '{TOKEN}'

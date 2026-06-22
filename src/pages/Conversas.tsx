@@ -29,7 +29,9 @@ import { Input } from '../components/ui/Input'
 import { ScoreBar } from '../components/ui/ScoreBar'
 import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
-import type { FollowUp, Lead } from '../types'
+import type { FollowUp, Lead, LeadScoreConfig } from '../types'
+import { useCompany } from '../contexts/CompanyContext'
+import { getLeadTemperature } from '../lib/leadScoring'
 
 type MissionKind =
   | 'salvar_venda'
@@ -240,14 +242,6 @@ const getTomorrowAtNine = () => {
   return tomorrow
 }
 
-const getTemperatureLabel = (lead: LeadDb) => {
-  if (lead.temperatura) return lead.temperatura
-  const score = lead.score || 0
-  if (score >= 70) return 'quente'
-  if (score >= 40) return 'morno'
-  return 'frio'
-}
-
 const getDueFollowUp = (lead: LeadDb, followUps: FollowUp[]) => {
   const explicitFollowUps = followUps
     .filter((item) => item.lead_id === lead.id && !item.realizado && isPastOrNow(item.agendado_para))
@@ -307,16 +301,16 @@ const makeMessage = (lead: LeadDb, kind: MissionKind) => {
   return `${greeting}passando para saber se ainda posso te ajudar com isso. Se fizer sentido, eu te mostro o melhor caminho.`
 }
 
-const makeMission = (lead: LeadDb, followUps: FollowUp[]): Mission | null => {
+const makeMission = (lead: LeadDb, followUps: FollowUp[], scoreConfig: LeadScoreConfig): Mission | null => {
   if (lead.convertido) return null
 
   const score = lead.score || 0
-  const temp = getTemperatureLabel(lead)
+  const temp = getLeadTemperature(lead, scoreConfig)
   const activityDate = getActivityDate(lead)
   const staleHours = hoursSince(activityDate)
   const dueFollowUp = getDueFollowUp(lead, followUps)
   const highIntent = lead.intencao_compra === 'alta' || lead.urgencia === 'imediato' || lead.orcamento_informado
-  const hot = score >= 70 || temp === 'quente' || highIntent
+  const hot = score >= scoreConfig.score_minimo_quente || temp === 'quente' || highIntent
   const summary = getSummary(lead)
 
   let kind: MissionKind = 'monitorar'
@@ -410,6 +404,7 @@ const matchesMissionFilter = (mission: Mission, filter: FilterKind) => {
 }
 
 export const Conversas: React.FC = () => {
+  const { scoreConfig } = useCompany()
   const [leads, setLeads] = useState<LeadDb[]>([])
   const [followUps, setFollowUps] = useState<FollowUp[]>([])
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
@@ -477,10 +472,10 @@ export const Conversas: React.FC = () => {
 
   const missions = useMemo(() => {
     return leads
-      .map((lead) => makeMission(lead, followUps))
+      .map((lead) => makeMission(lead, followUps, scoreConfig))
       .filter((mission): mission is Mission => !!mission)
       .sort((a, b) => b.priority - a.priority)
-  }, [leads, followUps])
+  }, [leads, followUps, scoreConfig])
 
   const filteredMissions = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()

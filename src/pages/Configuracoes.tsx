@@ -120,30 +120,15 @@ export const Configuracoes: React.FC = () => {
     id: number,
     values: Record<string, string | number>
   ): Promise<T> => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-    const response = await fetch(`${supabaseUrl}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify(values),
-    })
+    const { data, error } = await supabase
+      .from(table)
+      .update(values)
+      .eq('id', id)
+      .select()
+      .single()
 
-    if (!response.ok) {
-      const body = await response.text()
-      throw new Error(body || `Erro ${response.status} ao salvar`)
-    }
-
-    const updatedRows = await response.json()
-    if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
-      throw new Error('Nenhum registro foi atualizado.')
-    }
-
-    return updatedRows[0] as T
+    if (error) throw error
+    return data as T
   }
 
   const handleCopy = (text: string) => {

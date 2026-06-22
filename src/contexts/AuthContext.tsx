@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, supabaseAdmin } from '../lib/supabase'
@@ -6,6 +7,7 @@ import type { UserProfile, UserRole } from '../types'
 interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
+  role: UserRole | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -92,28 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [fetchUserProfile])
 
-  useEffect(() => {
-    if (!user?.id) return
-
-    const refreshProfile = () => {
-      void fetchUserProfile(user.id)
-    }
-
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') {
-        refreshProfile()
-      }
-    }
-
-    window.addEventListener('focus', refreshProfile)
-    document.addEventListener('visibilitychange', refreshWhenVisible)
-
-    return () => {
-      window.removeEventListener('focus', refreshProfile)
-      document.removeEventListener('visibilitychange', refreshWhenVisible)
-    }
-  }, [fetchUserProfile, user?.id])
-
   const refreshUserProfile = async () => {
     if (user?.id) {
       await fetchUserProfile(user.id)
@@ -137,8 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null)
     setUserProfile(null)
     setAuthRole(null)
-    localStorage.clear() // Remove local session data
-    
     // Attempt to notify Supabase but don't wait for it
     supabase.auth.signOut().catch(() => {})
     
@@ -146,10 +124,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.assign('/login')
   }
 
-  const isAdmin = userProfile?.role === 'admin' || authRole === 'admin'
+  const role = userProfile?.role ?? authRole
+  const isAdmin = role === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signIn, signOut, refreshUserProfile, isAdmin }}>
+    <AuthContext.Provider value={{ user, userProfile, role, loading, signIn, signOut, refreshUserProfile, isAdmin }}>
       {children}
     </AuthContext.Provider>
   )

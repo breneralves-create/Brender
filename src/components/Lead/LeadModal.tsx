@@ -130,7 +130,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
         temperatura: lead?.temperatura ?? 'frio'
       }
 
-      const response: any = lead
+      const response = lead
         ? await supabaseAdmin.from('leads').update(payload).eq('id', lead.id).select().single()
         : await supabaseAdmin.from('leads').insert([payload]).select().single()
 
@@ -144,9 +144,9 @@ export const LeadModal: React.FC<LeadModalProps> = ({
 
       onSuccess()
       onClose()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Falha no cadastro de lead:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Erro inesperado ao salvar o lead.')
     } finally {
       setLoading(false)
     }

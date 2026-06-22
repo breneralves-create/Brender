@@ -9,7 +9,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
-  const { userProfile } = useAuth()
+  const { user, userProfile, role } = useAuth()
+  const accountName = userProfile?.name || user?.user_metadata?.name || user?.email || 'Minha conta'
 
   return (
     <header className="h-16 bg-bg-card border-b border-border-card px-6 flex items-center justify-between z-30">
@@ -28,13 +29,13 @@ export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
       <div className="flex items-center gap-3">
         <div className="text-right hidden sm:block">
           <p className="text-sm font-semibold text-text-main leading-none">
-            {userProfile?.name || 'Minha conta'}
+            {accountName}
           </p>
           <p className="text-xs text-text-muted mt-1 leading-none uppercase tracking-wider font-bold">
-            {userProfile?.role === 'admin' ? 'Administrador' : 'Vendedor'}
+            {role === 'admin' ? 'Administrador' : 'Vendedor'}
           </p>
         </div>
-        <Avatar src={undefined} name={userProfile?.name} />
+        <Avatar src={undefined} name={accountName} />
       </div>
     </header>
   )

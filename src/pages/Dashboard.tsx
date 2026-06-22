@@ -16,7 +16,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell
 } from 'recharts'
-import { format, subDays, startOfMonth, endOfMonth, startOfDay, endOfDay, eachDayOfInterval, subMonths, formatDistanceToNow } from 'date-fns'
+import { differenceInCalendarDays, format, subDays, startOfMonth, endOfMonth, startOfDay, endOfDay, eachDayOfInterval, subMonths, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { supabase, supabaseAdmin } from '../lib/supabase'
 import { Layout } from '../components/layout/Layout'
@@ -30,9 +30,25 @@ import { useCompany } from '../contexts/CompanyContext'
 import { useAuth } from '../contexts/AuthContext'
 import type { Lead } from '../types'
 import { Badge } from '../components/ui/Badge'
+import { getLeadTemperature } from '../lib/leadScoring'
+import type { LeadScoreConfig } from '../types'
+
+const getLeadDate = (lead: Lead) => new Date(lead.horario_contato || lead.created_at)
+
+const getMetricSnapshot = (leads: Lead[], scoreConfig: LeadScoreConfig) => ({
+  total: leads.length,
+  quentes: leads.filter((lead) => getLeadTemperature(lead, scoreConfig) === 'quente').length,
+  encaminhados: leads.filter((lead) => lead.encaminhado_vendedor).length,
+  convertidos: leads.filter((lead) => lead.convertido).length,
+})
+
+const getPercentageChange = (current: number, previous: number) => {
+  if (previous === 0) return current === 0 ? 0 : 100
+  return Math.round(((current - previous) / previous) * 100)
+}
 
 export const Dashboard: React.FC = () => {
-  const { company, refreshCompany } = useCompany()
+  const { company, refreshCompany, scoreConfig } = useCompany()
   const { isAdmin } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [isToggling, setIsToggling] = useState(false)
@@ -145,18 +161,25 @@ export const Dashboard: React.FC = () => {
   }, [leads, dateRange, selectedRange])
 
   const metrics = useMemo(() => {
-    const total = filteredLeads.length
-    const quentes = filteredLeads.filter(l => l.temperatura === 'quente').length
-    const encaminhados = filteredLeads.filter(l => l.encaminhado_vendedor).length
-    const convertidos = filteredLeads.filter(l => l.convertido).length
+    const current = getMetricSnapshot(filteredLeads, scoreConfig)
+    const rangeDays = Math.max(1, differenceInCalendarDays(dateRange.to, dateRange.from) + 1)
+    const previousTo = endOfDay(subDays(dateRange.from, 1))
+    const previousFrom = startOfDay(subDays(dateRange.from, rangeDays))
+    const previousLeads = selectedRange === 'todos'
+      ? null
+      : leads.filter((lead) => {
+          const leadDate = getLeadDate(lead)
+          return !Number.isNaN(leadDate.getTime()) && leadDate >= previousFrom && leadDate <= previousTo
+        })
+    const previous = previousLeads ? getMetricSnapshot(previousLeads, scoreConfig) : null
 
     return [
-      { label: 'Total de Leads', value: total, icon: Users, color: 'text-text-main', trend: 12 },
-      { label: 'Leads Quentes', value: quentes, icon: Flame, color: 'text-hot', trend: 8 },
-      { label: 'Encaminhados', value: encaminhados, icon: Send, color: 'text-primary', trend: -3 },
-      { label: 'Convertidos', value: convertidos, icon: CheckCircle, color: 'text-success', trend: 15 },
+      { label: 'Total de Leads', value: current.total, icon: Users, color: 'text-text-main', trend: previous ? getPercentageChange(current.total, previous.total) : null },
+      { label: 'Leads Quentes', value: current.quentes, icon: Flame, color: 'text-hot', trend: previous ? getPercentageChange(current.quentes, previous.quentes) : null },
+      { label: 'Encaminhados', value: current.encaminhados, icon: Send, color: 'text-primary', trend: previous ? getPercentageChange(current.encaminhados, previous.encaminhados) : null },
+      { label: 'Convertidos', value: current.convertidos, icon: CheckCircle, color: 'text-success', trend: previous ? getPercentageChange(current.convertidos, previous.convertidos) : null },
     ]
-  }, [filteredLeads])
+  }, [dateRange, filteredLeads, leads, scoreConfig, selectedRange])
 
   const evolutionData = useMemo(() => {
     const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
@@ -251,7 +274,7 @@ export const Dashboard: React.FC = () => {
       .filter(l =>
         l.encaminhado_vendedor === true ||
         l.temperatura === 'quente' ||
-        (l.score ?? 0) >= 70
+        getLeadTemperature(l, scoreConfig) === 'quente'
       )
       .sort((a, b) => {
         if (a.encaminhado_vendedor !== b.encaminhado_vendedor) {
@@ -262,14 +285,14 @@ export const Dashboard: React.FC = () => {
         return dateB - dateA
       })
       .slice(0, 5)
-  }, [leads])
+  }, [leads, scoreConfig])
 
   const handleRangeChange = (range: typeof selectedRange) => {
     setSelectedRange(range)
     const today = new Date()
     switch (range) {
       case 'todos':
-        setDateRange({ from: new Date(2000, 0, 1), to: new Date(2100, 0, 1) }); break
+        setDateRange({ from: startOfMonth(today), to: endOfMonth(today) }); break
       case 'hoje':
         setDateRange({ from: startOfDay(today), to: endOfDay(today) }); break
       case 'ontem':
@@ -278,9 +301,10 @@ export const Dashboard: React.FC = () => {
         setDateRange({ from: startOfDay(subDays(today, 7)), to: endOfDay(today) }); break
       case 'este_mes':
         setDateRange({ from: startOfMonth(today), to: endOfMonth(today) }); break
-      case 'mes_passado':
+      case 'mes_passado': {
         const lastMonth = subMonths(today, 1)
         setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) }); break
+      }
       case 'este_ano':
         setDateRange({ from: new Date(today.getFullYear(), 0, 1), to: endOfMonth(today) }); break
     }
@@ -328,9 +352,15 @@ export const Dashboard: React.FC = () => {
                 <div className={`p-3 rounded-[10px] bg-bg-base border border-border-card group-hover:scale-105 transition-transform ${m.color}`}>
                   <m.icon size={24} />
                 </div>
-                <div className={`flex items-center gap-1 text-xs font-bold ${m.trend > 0 ? 'text-success' : 'text-error'}`}>
-                  {m.trend > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                  {Math.abs(m.trend)}%
+                <div className={`flex items-center gap-1 text-xs font-bold ${m.trend == null ? 'text-text-muted' : m.trend >= 0 ? 'text-success' : 'text-error'}`}>
+                  {m.trend == null ? (
+                    <span title="Selecione um periodo para comparar">—</span>
+                  ) : (
+                    <>
+                      {m.trend >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                      {Math.abs(m.trend)}%
+                    </>
+                  )}
                 </div>
               </div>
               <div>

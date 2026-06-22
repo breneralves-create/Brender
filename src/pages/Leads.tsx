@@ -26,9 +26,12 @@ import { ConfirmModal } from '../components/ui/ConfirmModal'
 import type { Lead } from '../types'
 import { buildWhatsAppUrl, formatWhatsAppNumber, openWhatsApp } from '../lib/whatsapp'
 import { useAuth } from '../contexts/AuthContext'
+import { useCompany } from '../contexts/CompanyContext'
+import { getLeadTemperature } from '../lib/leadScoring'
 
 export const Leads: React.FC = () => {
   const { isAdmin } = useAuth()
+  const { scoreConfig } = useCompany()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -89,7 +92,7 @@ export const Leads: React.FC = () => {
       } else {
         console.log('✅ LEADS: Recebidos', data?.length, 'leads do banco.')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao buscar leads:', err)
     } finally {
       setLoading(false)
@@ -104,20 +107,13 @@ export const Leads: React.FC = () => {
         setDateRange({ from: startOfDay(today), to: endOfDay(today) }); break
       case 'este_mes':
         setDateRange({ from: startOfMonth(today), to: endOfMonth(today) }); break
-      case 'mes_passado':
+      case 'mes_passado': {
         const lastMonth = subMonths(today, 1)
         setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) }); break
+      }
       default:
         setDateRange({ from: new Date(2000, 0, 1), to: new Date(2100, 0, 1) })
     }
-  }
-
-  const getDisplayTemperature = (lead: Lead) => {
-    if (lead.temperatura) return lead.temperatura
-    const score = lead.score || 0
-    if (score >= 80) return 'quente'
-    if (score >= 40) return 'morno'
-    return 'frio'
   }
 
   const filteredLeads = useMemo(() => {
@@ -126,7 +122,7 @@ export const Leads: React.FC = () => {
         ((lead.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase())) ||
         (lead.whatsapp || '').includes(searchTerm)
 
-      const matchesTemp = tempFilter.length === 0 || tempFilter.includes(getDisplayTemperature(lead))
+      const matchesTemp = tempFilter.length === 0 || tempFilter.includes(getLeadTemperature(lead, scoreConfig))
 
       const matchesHours =
         hoursFilter === 'todos' ||
@@ -145,7 +141,7 @@ export const Leads: React.FC = () => {
 
       return matchesSearch && matchesTemp && matchesHours && matchesForward && matchesDate
     })
-  }, [leads, searchTerm, tempFilter, hoursFilter, forwardFilter, dateRange, selectedRange])
+  }, [leads, searchTerm, tempFilter, hoursFilter, forwardFilter, dateRange, selectedRange, scoreConfig])
 
   const sortedLeads = useMemo(() => {
     return [...filteredLeads].sort((a, b) => {
@@ -199,9 +195,10 @@ export const Leads: React.FC = () => {
 
       setLeads(prev => prev.filter(l => l.id !== leadToDelete))
       setIsDeleteModalOpen(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao deletar lead:', err)
-      alert(`Erro ao excluir lead: ${err.message || 'Verifique suas permissões de RLS.'}`)
+      const message = err instanceof Error ? err.message : 'Verifique suas permissões de RLS.'
+      alert(`Erro ao excluir lead: ${message}`)
     } finally {
       setIsDeleting(false)
       setLeadToDelete(null)
@@ -223,13 +220,14 @@ export const Leads: React.FC = () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const tempCounts = useMemo(() => ({
-    quente: leads.filter(l => getDisplayTemperature(l) === 'quente').length,
-    morno: leads.filter(l => getDisplayTemperature(l) === 'morno').length,
-    frio: leads.filter(l => getDisplayTemperature(l) === 'frio').length,
-  }), [leads])
+    quente: leads.filter(l => getLeadTemperature(l, scoreConfig) === 'quente').length,
+    morno: leads.filter(l => getLeadTemperature(l, scoreConfig) === 'morno').length,
+    frio: leads.filter(l => getLeadTemperature(l, scoreConfig) === 'frio').length,
+  }), [leads, scoreConfig])
 
   const toggleTempCard = (temp: string) => {
     setTempFilter(prev => prev.includes(temp) ? prev.filter(x => x !== temp) : [...prev, temp])
@@ -256,7 +254,7 @@ export const Leads: React.FC = () => {
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-[#C0392B]">🔥 Quente</p>
               <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.quente}</p>
-              <p className="text-[10px] text-text-muted mt-0.5">Score 80–100</p>
+              <p className="text-[10px] text-text-muted mt-0.5">Score {scoreConfig.score_minimo_quente}–100</p>
             </div>
           </button>
 
@@ -275,7 +273,7 @@ export const Leads: React.FC = () => {
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-[#B7770D]">🌡 Morno</p>
               <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.morno}</p>
-              <p className="text-[10px] text-text-muted mt-0.5">Score 40–79</p>
+              <p className="text-[10px] text-text-muted mt-0.5">Score {scoreConfig.score_minimo_morno}–{scoreConfig.score_minimo_quente - 1}</p>
             </div>
           </button>
 
@@ -294,7 +292,7 @@ export const Leads: React.FC = () => {
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-[#1D6FA4]">❄ Frio</p>
               <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.frio}</p>
-              <p className="text-[10px] text-text-muted mt-0.5">Score 0–39</p>
+              <p className="text-[10px] text-text-muted mt-0.5">Score 0–{scoreConfig.score_minimo_morno - 1}</p>
             </div>
           </button>
         </div>
@@ -358,7 +356,7 @@ export const Leads: React.FC = () => {
             <select
               className="bg-bg-card border border-border-card rounded-lg px-4 py-2.5 text-xs font-medium text-text-main"
               value={hoursFilter}
-              onChange={e => setHoursFilter(e.target.value as any)}
+              onChange={e => setHoursFilter(e.target.value as typeof hoursFilter)}
             >
               <option value="todos" className="bg-[#1a1c24] text-white">Todos os Horários</option>
               <option value="comercial" className="bg-[#1a1c24] text-white">Horário Comercial</option>
@@ -368,7 +366,7 @@ export const Leads: React.FC = () => {
             <select
               className="bg-bg-card border border-border-card rounded-lg px-4 py-2.5 text-xs font-medium text-text-main"
               value={forwardFilter}
-              onChange={e => setForwardFilter(e.target.value as any)}
+              onChange={e => setForwardFilter(e.target.value as typeof forwardFilter)}
             >
               <option value="todos" className="bg-[#1a1c24] text-white">Encaminhamento (Todos)</option>
               <option value="encaminhado" className="bg-[#1a1c24] text-white">Encaminhados</option>
@@ -448,7 +446,7 @@ export const Leads: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <LeadTemperature temperature={getDisplayTemperature(lead)} className="text-[10px] py-1" />
+                      <LeadTemperature temperature={getLeadTemperature(lead, scoreConfig)} className="text-[10px] py-1" />
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center">

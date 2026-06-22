@@ -23,7 +23,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { userProfile, signOut, isAdmin } = useAuth()
+  const { userProfile, role, signOut, isAdmin } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { company } = useCompany()
   const profileName = company?.nome?.trim() || userProfile?.name || 'Usuário'
@@ -107,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 {profileName}
               </p>
               <p className="text-xs text-[#7A7F99] truncate capitalize">
-                {userProfile?.role || 'vendedor'}
+                {role || 'vendedor'}
               </p>
             </div>
           </div>

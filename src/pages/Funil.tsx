@@ -22,6 +22,8 @@ import { Input } from '../components/ui/Input'
 import { DrawerLead } from '../components/Lead/DrawerLead'
 import { LeadModal } from '../components/Lead/LeadModal'
 import { LeadTemperature } from '../components/ui/LeadTemperature'
+import { useCompany } from '../contexts/CompanyContext'
+import { getLeadTemperature } from '../lib/leadScoring'
 
 const COLUMNS: { id: LeadStatus; title: string, hexColor: string }[] = [
   { id: 'novo_contato', title: 'Novo Contato', hexColor: '#3b82f6' },
@@ -38,11 +40,8 @@ const isDueDate = (dateStr: string | null | undefined) => {
   return date.getTime() <= Date.now()
 }
 
-const isFollowUpSent = (lead: Lead) => {
-  return lead.followup_1enviado?.trim().toLowerCase() === 'feito'
-}
-
 export const Funil: React.FC = () => {
+  const { scoreConfig } = useCompany()
   const [leads, setLeads] = useState<Lead[]>([])
   const [dueFollowUpLeadIds, setDueFollowUpLeadIds] = useState<Set<string>>(new Set())
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -107,15 +106,20 @@ export const Funil: React.FC = () => {
     const updatedLeads = [...leads]
     const leadIndex = updatedLeads.findIndex(l => l.id === draggableId)
     if (leadIndex !== -1) {
-      const isConvertido = newStatus === 'convertido';
-      const isEncaminhado = newStatus === 'encaminhado' ? true : updatedLeads[leadIndex].encaminhado_vendedor;
+      const currentLead = updatedLeads[leadIndex]
+      const now = new Date().toISOString()
+      const isConvertido = newStatus === 'convertido'
+      const isEncaminhado = newStatus === 'encaminhado'
+      const dataConversao = isConvertido ? (currentLead.data_conversao || now) : null
+      const dataEncaminhamento = isEncaminhado ? (currentLead.data_encaminhamento || now) : null
       
       updatedLeads[leadIndex] = { 
-        ...updatedLeads[leadIndex], 
+        ...currentLead,
         status: newStatus,
         convertido: isConvertido,
         encaminhado_vendedor: isEncaminhado,
-        data_conversao: isConvertido && !updatedLeads[leadIndex].convertido ? new Date().toISOString() : updatedLeads[leadIndex].data_conversao
+        data_conversao: dataConversao,
+        data_encaminhamento: dataEncaminhamento,
       }
       setLeads(updatedLeads)
 
@@ -126,12 +130,13 @@ export const Funil: React.FC = () => {
             status: newStatus,
             convertido: isConvertido,
             encaminhado_vendedor: isEncaminhado,
-            data_conversao: isConvertido && !updatedLeads[leadIndex].convertido ? new Date().toISOString() : null
+            data_conversao: dataConversao,
+            data_encaminhamento: dataEncaminhamento,
           })
           .eq('id', draggableId)
         
         if (error) fetchHotLeads()
-      } catch (err) {
+      } catch {
         fetchHotLeads()
       }
     }
@@ -148,10 +153,9 @@ export const Funil: React.FC = () => {
     // Prioridade máxima para as flags booleanas
     if (lead.convertido) return 'convertido';
     if (lead.encaminhado_vendedor) return 'encaminhado';
-    if (isFollowUpSent(lead)) return 'follow_up';
     if ((s === 'follow_up' && !lead.data_follow_up) || isDueDate(lead.data_follow_up) || dueFollowUpLeadIds.has(lead.id)) return 'follow_up';
     if (s === 'follow_up') s = 'novo_contato';
-    if (lead.score && lead.score >= 80) return 'em_qualificacao';
+    if (lead.score && lead.score >= scoreConfig.score_minimo_quente) return 'em_qualificacao';
     if (lead.temperatura === 'quente' || lead.temperatura === 'morno' || lead.temperatura === 'frio') return 'em_qualificacao';
     // Mapeamento de status legados/ocultos
     if (s === 'fora_horario' || s === 'primeiro_contato' || s === 'conversando') s = 'novo_contato';
@@ -166,15 +170,11 @@ export const Funil: React.FC = () => {
   }
 
   const isFirstContact = (lead: Lead) => {
-    return !lead.convertido
+    return getEffectiveStatus(lead) === 'novo_contato'
   }
 
   const getDisplayTemperature = (lead: Lead) => {
-    if (lead.temperatura) return lead.temperatura
-    const score = lead.score || 0
-    if (score >= 80) return 'quente'
-    if (score >= 40) return 'morno'
-    return 'frio'
+    return getLeadTemperature(lead, scoreConfig)
   }
 
   const getLeadsByStatus = (status: LeadStatus) => {
@@ -249,7 +249,7 @@ export const Funil: React.FC = () => {
                                 `}
                               >
                                 {/* Indicador lateral discreto de Score/Hot */}
-                                {lead.score && lead.score > 80 && (
+                                {lead.score != null && lead.score >= scoreConfig.score_minimo_quente && (
                                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C0392B] rounded-l-md" />
                                 )}
 
@@ -262,7 +262,7 @@ export const Funil: React.FC = () => {
                                         {lead.nome || lead.whatsapp}
                                       </p>
                                     </div>
-                                    {lead.score && lead.score > 80 && (
+                                    {lead.score != null && lead.score >= scoreConfig.score_minimo_quente && (
                                       <Flame size={14} className="text-[#C0392B] flex-shrink-0" />
                                     )}
                                   </div>
@@ -279,7 +279,7 @@ export const Funil: React.FC = () => {
                                       : 'bg-bg-base border-border-card text-text-muted'
                                   }`}>
                                     {isFirstContact(lead) ? <Sparkles size={11} /> : <RotateCcw size={11} />}
-                                    {isFirstContact(lead) ? 'Primeiro contato' : 'Cliente convertido'}
+                                    {isFirstContact(lead) ? 'Primeiro contato' : lead.convertido ? 'Cliente convertido' : 'Em andamento'}
                                   </div>
 
                                   {/* Badges Info */}
