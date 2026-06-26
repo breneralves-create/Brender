@@ -16,6 +16,7 @@ dist-ssr
 !.env.example
 scratch/
 teste-*.js
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*
