@@ -639,12 +639,12 @@ export const Conversas: React.FC = () => {
     const scheduledDate = new Date(scheduleAt)
 
     if (Number.isNaN(scheduledDate.getTime())) {
-      setActionFeedback({ type: 'error', text: 'Escolha uma data e horario validos para a proxima acao.' })
+      setActionFeedback({ type: 'error', text: 'Escolha uma data e horario validos para o lembrete.' })
       return
     }
 
     if (scheduledDate.getTime() <= Date.now()) {
-      setActionFeedback({ type: 'error', text: 'A proxima acao precisa ficar em um horario futuro.' })
+      setActionFeedback({ type: 'error', text: 'O lembrete precisa ficar em um horario futuro.' })
       return
     }
 
@@ -667,30 +667,23 @@ export const Conversas: React.FC = () => {
 
       if (error) throw error
 
-      const { error: followUpError } = await supabaseAdmin
-        .from('follow_ups')
-        .insert({
-          lead_id: selectedMission.lead.id,
-          agendado_para: scheduledAt,
-          motivo: reason,
-          realizado: false,
-          criado_por: 'vendedor',
-        })
-
-      if (followUpError) throw followUpError
-
       await registerLeadNote(
         selectedMission.lead.id,
-        `Proxima acao agendada para ${format(scheduledDate, "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}. Motivo: ${reason}`,
+        `Lembrete salvo para ${format(scheduledDate, "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}. Motivo: ${reason}`,
         now
-      )
+      ).catch((noteError) => {
+        console.warn('Nao foi possivel registrar historico do lembrete:', noteError)
+      })
 
       await fetchRadarData(false)
       setIsScheduleOpen(false)
-      setActionFeedback({ type: 'success', text: 'Proxima acao agendada e registrada no historico do lead.' })
+      setActionFeedback({
+        type: 'success',
+        text: `Lembrete salvo para ${format(scheduledDate, "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}. O lead voltara ao Radar nesse horario.`,
+      })
     } catch (err) {
       console.error('Erro ao agendar retorno:', err)
-      setActionFeedback({ type: 'error', text: 'Nao consegui agendar a proxima acao. Tente novamente.' })
+      setActionFeedback({ type: 'error', text: 'Nao consegui salvar o lembrete. Tente novamente.' })
     } finally {
       setActionLoading(null)
     }
@@ -985,7 +978,7 @@ export const Conversas: React.FC = () => {
                           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm font-black text-amber-300 transition-all hover:bg-amber-500 hover:text-[#0F1117] disabled:opacity-60"
                         >
                           <CalendarClock size={17} />
-                          Agendar
+                          Lembrete
                         </button>
 
                         <button
@@ -1024,8 +1017,9 @@ export const Conversas: React.FC = () => {
                         <div className="rounded-[10px] border border-amber-500/25 bg-[#2C2A2F] p-5 text-amber-50">
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Agenda</p>
-                              <h3 className="mt-1 text-lg font-black text-white">Proxima acao</h3>
+                              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Lembrete</p>
+                              <h3 className="mt-1 text-lg font-black text-white">Voltar ao Radar</h3>
+                              <p className="mt-1 text-xs font-semibold text-white/45">Nao envia WhatsApp automatico. Apenas traz este lead de volta como prioridade.</p>
                             </div>
                             <button
                               type="button"
@@ -1077,7 +1071,7 @@ export const Conversas: React.FC = () => {
                               className="inline-flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400 px-4 py-2 text-xs font-black text-[#0F1117] transition-all hover:brightness-110 disabled:opacity-60"
                             >
                               <CalendarClock size={15} />
-                              {actionLoading === 'schedule' ? 'Agendando...' : 'Salvar proxima acao'}
+                              {actionLoading === 'schedule' ? 'Salvando...' : 'Salvar lembrete'}
                             </button>
                           </div>
                         </div>
