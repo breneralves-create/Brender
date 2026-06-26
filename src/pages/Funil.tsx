@@ -250,7 +250,7 @@ export const Funil: React.FC = () => {
                               >
                                 {/* Indicador lateral discreto de Score/Hot */}
                                 {lead.score != null && lead.score >= scoreConfig.score_minimo_quente && (
-                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C0392B] rounded-l-md" />
+                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-hot rounded-l-md" />
                                 )}
 
                                 <div className="space-y-2">
@@ -263,7 +263,7 @@ export const Funil: React.FC = () => {
                                       </p>
                                     </div>
                                     {lead.score != null && lead.score >= scoreConfig.score_minimo_quente && (
-                                      <Flame size={14} className="text-[#C0392B] flex-shrink-0" />
+                                      <Flame size={14} className="text-hot flex-shrink-0" />
                                     )}
                                   </div>
 

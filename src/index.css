@@ -43,15 +43,15 @@
     --primary-light: #00C48C15;
     --text-main: #1A1F2E;
     --text-muted: #6B7280;
-    --hot: #C0392B;
-    --hot-light: #FEF3F0;
-    --warm: #B7770D;
-    --warm-light: #FEF9EC;
-    --cold: #1D6FA4;
-    --cold-light: #EFF6FF;
+    --hot: #B91C1C;
+    --hot-light: #FEF2F2;
+    --warm: #92400E;
+    --warm-light: #FFFBEB;
+    --cold: #0369A1;
+    --cold-light: #F0F9FF;
     --success: #00C48C;
-    --warning: #B7770D;
-    --error: #C0392B;
+    --warning: #92400E;
+    --error: #B91C1C;
     --sidebar-active: #00C48C15;
 
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);

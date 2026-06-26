@@ -247,15 +247,15 @@ export const Leads: React.FC = () => {
             onClick={() => toggleTempCard('quente')}
             className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
               tempFilter.includes('quente')
-                ? 'bg-[#FEF3F0] border-[#F5A89A] shadow-sm'
-                : 'bg-bg-card border-border-card hover:border-[#F5A89A] hover:bg-[#FEF3F0]/40'
+                ? 'bg-hot-light border-hot/30 shadow-sm'
+                : 'bg-bg-card border-border-card hover:border-hot/30 hover:bg-hot-light/40'
             }`}
           >
-            <div className="w-10 h-10 rounded-lg bg-[#C0392B] flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-hot flex items-center justify-center flex-shrink-0">
               <Flame size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-[#C0392B]">🔥 Quente</p>
+              <p className="text-xs font-black uppercase tracking-wider text-hot">🔥 Quente</p>
               <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.quente}</p>
               <p className="text-[10px] text-text-muted mt-0.5">Score {scoreConfig.score_minimo_quente}–100</p>
             </div>
@@ -266,15 +266,15 @@ export const Leads: React.FC = () => {
             onClick={() => toggleTempCard('morno')}
             className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
               tempFilter.includes('morno')
-                ? 'bg-[#FEF9EC] border-[#F9D589] shadow-sm'
-                : 'bg-bg-card border-border-card hover:border-[#F9D589] hover:bg-[#FEF9EC]/40'
+                ? 'bg-warm-light border-warm/30 shadow-sm'
+                : 'bg-bg-card border-border-card hover:border-warm/30 hover:bg-warm-light/40'
             }`}
           >
-            <div className="w-10 h-10 rounded-lg bg-[#B7770D] flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-warm flex items-center justify-center flex-shrink-0">
               <Thermometer size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-[#B7770D]">🌡 Morno</p>
+              <p className="text-xs font-black uppercase tracking-wider text-warm">🌡 Morno</p>
               <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.morno}</p>
               <p className="text-[10px] text-text-muted mt-0.5">Score {scoreConfig.score_minimo_morno}–{scoreConfig.score_minimo_quente - 1}</p>
             </div>
@@ -285,15 +285,15 @@ export const Leads: React.FC = () => {
             onClick={() => toggleTempCard('frio')}
             className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
               tempFilter.includes('frio')
-                ? 'bg-[#EFF6FF] border-[#93C5FD] shadow-sm'
-                : 'bg-bg-card border-border-card hover:border-[#93C5FD] hover:bg-[#EFF6FF]/40'
+                ? 'bg-cold-light border-cold/30 shadow-sm'
+                : 'bg-bg-card border-border-card hover:border-cold/30 hover:bg-cold-light/40'
             }`}
           >
-            <div className="w-10 h-10 rounded-lg bg-[#1D6FA4] flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-cold flex items-center justify-center flex-shrink-0">
               <Snowflake size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-[#1D6FA4]">❄ Frio</p>
+              <p className="text-xs font-black uppercase tracking-wider text-cold">❄ Frio</p>
               <p className="text-lg font-bold text-text-main leading-none mt-0.5">{tempCounts.frio}</p>
               <p className="text-[10px] text-text-muted mt-0.5">Score 0–{scoreConfig.score_minimo_morno - 1}</p>
             </div>
@@ -346,7 +346,7 @@ export const Leads: React.FC = () => {
                   key={t}
                   onClick={() => setTempFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
                   className={`py-2 px-3 rounded-full text-xs font-bold uppercase transition-all flex items-center justify-center gap-1.5 border ${tempFilter.includes(t)
-                      ? (t === 'quente' ? 'bg-[#FEF3F0] text-[#C0392B] border-[#F5A89A]' : t === 'morno' ? 'bg-[#FEF9EC] text-[#B7770D] border-[#F9D589]' : 'bg-[#EFF6FF] text-[#1D6FA4] border-[#93C5FD]')
+                      ? (t === 'quente' ? 'bg-hot-light text-hot border-hot/30' : t === 'morno' ? 'bg-warm-light text-warm border-warm/30' : 'bg-cold-light text-cold border-cold/30')
                       : 'bg-bg-card text-text-muted border-border-card hover:text-text-main hover:bg-bg-base'
                     }`}
                 >
@@ -466,7 +466,7 @@ export const Leads: React.FC = () => {
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center">
                         {lead.bot_ativo === false ? (
-                          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#F9D589] bg-[#FEF9EC] px-2.5 py-1 text-[10px] font-bold uppercase text-[#B7770D]">
+                          <div className="inline-flex items-center gap-1.5 rounded-full border border-warm/30 bg-warm-light px-2.5 py-1 text-[10px] font-bold uppercase text-warm">
                             <BotOff size={12} />
                             Agente pausada
                           </div>
@@ -489,7 +489,7 @@ export const Leads: React.FC = () => {
                           {lead.dentro_horario_comercial ? (
                             <span className="text-[#00C48C]"> (Comercial)</span>
                           ) : (
-                            <span className="text-[#B7770D]"> (Fora do Horário)</span>
+                            <span className="text-warm"> (Fora do Horário)</span>
                           )}
                         </span>
                       </div>

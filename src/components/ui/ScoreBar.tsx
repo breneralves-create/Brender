@@ -10,9 +10,9 @@ export const ScoreBar: React.FC<ScoreBarProps> = ({ score, className = '' }) => 
   const { scoreConfig } = useCompany()
   
   const getScoreColor = (val: number) => {
-    if (val < scoreConfig.score_minimo_morno) return 'bg-[#1D6FA4]'
-    if (val < scoreConfig.score_minimo_quente) return 'bg-[#B7770D]'
-    return 'bg-[#C0392B]'
+    if (val < scoreConfig.score_minimo_morno) return 'bg-cold'
+    if (val < scoreConfig.score_minimo_quente) return 'bg-warm'
+    return 'bg-hot'
   }
 
   const normalizedScore = Math.min(Math.max(score, 0), 100)
