@@ -38,7 +38,7 @@ export const LeadTemperature: React.FC<LeadTemperatureProps> = ({ temperature, c
     <Badge 
       variant={current.variant} 
       icon={current.icon}
-      className={`text-[10px] uppercase tracking-wide ${className}`}
+      className={`text-[10px] font-black uppercase tracking-wide shadow-sm ${className}`}
     >
       {current.label}
     </Badge>
