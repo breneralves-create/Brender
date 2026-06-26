@@ -30,6 +30,7 @@ import { buildWhatsAppUrl, formatWhatsAppNumber, openWhatsApp } from '../lib/wha
 import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { getLeadTemperature } from '../lib/leadScoring'
+import { formatCityName } from '../lib/textFormat'
 
 export const Leads: React.FC = () => {
   const { isAdmin } = useAuth()
@@ -436,7 +437,7 @@ export const Leads: React.FC = () => {
                     <td className="px-6 py-4 text-xs font-semibold text-text-main">
                       {lead.cidade ? (
                         <Badge variant="muted" className="text-xs bg-[#00C48C]/10 text-[#00C48C] border-[#00C48C]/20">
-                          {lead.cidade}
+                          {formatCityName(lead.cidade)}
                         </Badge>
                       ) : (
                         <span className="text-text-muted opacity-40">—</span>

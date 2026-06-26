@@ -28,6 +28,7 @@ import { LeadTemperature } from '../ui/LeadTemperature'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import { buildWhatsAppUrl, formatWhatsAppNumber, openWhatsApp } from '../../lib/whatsapp'
+import { formatCityName } from '../../lib/textFormat'
 
 interface DrawerLeadProps {
   lead: Lead | null
@@ -325,7 +326,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
               <span className="text-[10px] uppercase tracking-tighter text-text-muted">Cidade</span>
               <div className="text-sm font-semibold flex items-center gap-1">
                 <MapPin size={12} className="text-text-muted" />
-                {lead.cidade || 'N/A'}
+                {formatCityName(lead.cidade) || 'N/A'}
               </div>
             </Card>
           </div>

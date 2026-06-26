@@ -3,6 +3,7 @@ import { authenticateApiToken, createAdminClient } from '../_shared/supabase.ts'
 import {
   LEAD_STATUSES,
   normalizeWhatsApp,
+  normalizeCityName,
   optionalString,
   pickFields,
   requiredFutureDate,
@@ -46,7 +47,7 @@ const handleCreateLead = async (body: Record<string, unknown>) => {
     nome: optionalString(body.nome, 'nome', 200),
     produto_interesse: optionalString(body.produto_interesse, 'produto_interesse', 300),
     origem: optionalString(body.origem, 'origem', 100),
-    cidade: optionalString(body.cidade, 'cidade', 200),
+    cidade: normalizeCityName(body.cidade),
     dentro_horario_comercial: typeof body.dentro_horario_comercial === 'boolean' ? body.dentro_horario_comercial : true,
     status: 'novo_contato',
     ultima_atividade: new Date().toISOString(),
@@ -92,6 +93,7 @@ const handleUpdateLead = async (id: string, body: Record<string, unknown>) => {
     'intencao_compra', 'urgencia', 'orcamento_informado', 'produto_interesse',
     'cidade', 'origem', 'bot_ativo',
   ])
+  if (body.cidade !== undefined) updates.cidade = normalizeCityName(body.cidade)
   updates.ultima_atividade = new Date().toISOString()
 
   const { data, error } = await admin.from('leads').update(updates).eq('id', id).select().maybeSingle()

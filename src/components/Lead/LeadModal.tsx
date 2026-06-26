@@ -5,6 +5,7 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { useCompany } from '../../contexts/CompanyContext'
+import { formatCityName } from '../../lib/textFormat'
 
 interface LeadModalProps {
   isOpen: boolean
@@ -121,6 +122,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
       const payload = {
         ...formData,
         whatsapp: formData.whatsapp.replace(/\D/g, ''), // salva só números
+        cidade: formatCityName(formData.cidade) || null,
         status: lead ? lead.status : 'novo_contato',
         dentro_horario_comercial: checkBusinessHours(lead?.horario_contato ? new Date(lead.horario_contato) : new Date()),
         encaminhado_vendedor: lead?.encaminhado_vendedor ?? false,

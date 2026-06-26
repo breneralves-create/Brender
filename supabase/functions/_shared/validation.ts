@@ -40,6 +40,22 @@ export const optionalString = (value: unknown, field: string, maxLength = 5000) 
   return value.trim() || null
 }
 
+const smallWords = new Set(['da', 'de', 'di', 'do', 'du', 'das', 'dos', 'e'])
+
+export const normalizeCityName = (value: unknown) => {
+  const city = optionalString(value, 'cidade', 200)
+  if (!city) return city
+
+  return city
+    .toLocaleLowerCase('pt-BR')
+    .split(/\s+/)
+    .map((word, index) => {
+      if (index > 0 && smallWords.has(word)) return word
+      return word.charAt(0).toLocaleUpperCase('pt-BR') + word.slice(1)
+    })
+    .join(' ')
+}
+
 export const requiredUuid = (value: unknown, field = 'id') => {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
     throw new ApiError(422, 'UUID_INVALIDO', `O campo ${field} deve ser um UUID valido.`)
