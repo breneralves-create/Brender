@@ -150,6 +150,7 @@ export interface BusinessHours {
 
 export interface UserProfile {
   id: string
+  email?: string | null
   name: string | null
   role: UserRole
   created_at: string

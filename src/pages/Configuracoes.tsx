@@ -238,18 +238,37 @@ export const Configuracoes: React.FC = () => {
   const createUser = async () => {
     if (!newUserEmail) return
     setIsSaving(true)
-    // O trigger on_auth_user_created insere automaticamente em public.users
-    const { error } = await supabase.auth.signUp({
-      email: newUserEmail,
-      password: crypto.randomUUID(),
+    const { error } = await supabase.functions.invoke('admin-users', {
+      body: {
+        action: 'invite',
+        email: newUserEmail,
+        role: 'vendedor',
+      },
     })
     setIsSaving(false)
-    if (error) triggerToast('error')
+    if (error) triggerToast('error', error.message)
     else {
       setIsUserModalOpen(false)
       setNewUserEmail('')
-      triggerToast('success')
-      setTimeout(fetchUsers, 1200)
+      triggerToast('success', 'Convite enviado com seguranca.')
+      fetchUsers()
+    }
+  }
+
+  const removeUser = async (userId: string) => {
+    if (!window.confirm('Remover este usuario do sistema?')) return
+    setIsSaving(true)
+    const { error } = await supabase.functions.invoke('admin-users', {
+      body: {
+        action: 'delete',
+        user_id: userId,
+      },
+    })
+    setIsSaving(false)
+    if (error) triggerToast('error', error.message)
+    else {
+      triggerToast('success', 'Usuario removido com seguranca.')
+      fetchUsers()
     }
   }
 
@@ -373,7 +392,8 @@ export const Configuracoes: React.FC = () => {
               <tr key={user.id} className="hover:bg-bg-base/30 transition-colors">
                 <td className="px-4 py-4">
                   <div>
-                    <p className="font-medium text-text-main">{user.name || 'Sem nome'}</p>
+                    <p className="font-medium text-text-main">{user.email || user.name || 'Sem e-mail'}</p>
+                    {user.name && <p className="text-xs text-text-muted">{user.name}</p>}
                     <p className="text-xs text-text-muted font-mono opacity-50">{user.id.substring(0, 20)}...</p>
                   </div>
                 </td>
@@ -386,7 +406,12 @@ export const Configuracoes: React.FC = () => {
                   {new Date(user.created_at).toLocaleDateString('pt-BR')}
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <button className="p-2 text-text-muted hover:text-error transition-colors" title="Remover">
+                  <button
+                    className="p-2 text-text-muted hover:text-error transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    title="Remover"
+                    onClick={() => removeUser(user.id)}
+                    disabled={isSaving}
+                  >
                     <Trash2 size={18} />
                   </button>
                 </td>

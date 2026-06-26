@@ -37,7 +37,17 @@ interface DrawerLeadProps {
   onEdit?: (lead: Lead) => void
 }
 
-const BOT_CONTROL_WEBHOOK_URL = import.meta.env.VITE_BOT_CONTROL_WEBHOOK_URL
+const dateTimeLocalValue = (date: Date) => {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const tomorrowAtNine = () => {
+  const date = new Date()
+  date.setDate(date.getDate() + 1)
+  date.setHours(9, 0, 0, 0)
+  return dateTimeLocalValue(date)
+}
 
 export const DrawerLead: React.FC<DrawerLeadProps> = ({
   lead,
@@ -52,6 +62,12 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
   const [botLoading, setBotLoading] = useState(false)
   const [botAtivo, setBotAtivo] = useState<boolean>(true)
   const [botError, setBotError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false)
+  const [scheduleAt, setScheduleAt] = useState(tomorrowAtNine)
+  const [scheduleReason, setScheduleReason] = useState('Retornar com o lead para avancar a negociacao.')
+  const [isNoteOpen, setIsNoteOpen] = useState(false)
+  const [noteText, setNoteText] = useState('')
 
   const fetchLeadDetails = useCallback(async () => {
     if (!lead) return
@@ -83,6 +99,11 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
       void fetchLeadDetails()
       setBotAtivo(lead.bot_ativo ?? true)
       setBotError(null)
+      setScheduleAt(tomorrowAtNine())
+      setScheduleReason('Retornar com o lead para avancar a negociacao.')
+      setNoteText('')
+      setIsScheduleOpen(false)
+      setIsNoteOpen(false)
     }
   }, [fetchLeadDetails, isOpen, lead])
 
@@ -117,51 +138,98 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     setBotLoading(true)
     setBotError(null)
     try {
-      if (!BOT_CONTROL_WEBHOOK_URL) {
-        throw new Error('Webhook de controle da IA nao configurado.')
-      }
-
-      const response = await fetch(BOT_CONTROL_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          whatsapp: lead.whatsapp,
+      const { data, error } = await supabaseAdmin.functions.invoke<{
+        lead?: { bot_ativo?: boolean | null }
+        mensagem?: string
+      }>('bot-control', {
+        body: {
+          lead_id: lead.id,
           ativo: ativar,
-        }),
+        },
       })
 
-      const responseText = await response.text()
-      let result: { success?: boolean; message?: string } | null = null
-      try {
-        result = responseText ? JSON.parse(responseText) : null
-      } catch {
-        result = null
-      }
+      if (error) throw error
+      if (data?.lead?.bot_ativo !== ativar) throw new Error(data?.mensagem || 'A alteracao nao foi confirmada pelo servidor.')
 
-      if (!response.ok || result?.success === false) {
-        throw new Error(result?.message || `Webhook respondeu com status ${response.status}.`)
-      }
-
-      const { data: confirmedLead, error: confirmationError } = await supabaseAdmin
-        .from('leads')
-        .select('bot_ativo')
-        .eq('id', lead.id)
-        .single()
-
-      if (confirmationError) throw confirmationError
-      if (confirmedLead.bot_ativo !== ativar) {
-        throw new Error('O webhook respondeu, mas não confirmou a alteração de bot_ativo no banco.')
-      }
-
-      setBotAtivo(confirmedLead.bot_ativo)
+      setBotAtivo(ativar)
       if (onUpdate) onUpdate()
     } catch (error) {
       console.error('Erro ao alterar bot:', error)
       setBotError(error instanceof Error ? error.message : 'Nao foi possivel alterar o agente. Tente novamente.')
     } finally {
       setBotLoading(false)
+    }
+  }
+
+  const handleCreateFollowUp = async () => {
+    if (!lead || !scheduleAt || !scheduleReason.trim()) return
+    const scheduledDate = new Date(scheduleAt)
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      setBotError('Escolha uma data futura para o follow-up.')
+      return
+    }
+
+    setActionLoading(true)
+    setBotError(null)
+    try {
+      const isoDate = scheduledDate.toISOString()
+      const reason = scheduleReason.trim()
+      const { error: followUpError } = await supabaseAdmin.from('follow_ups').insert({
+        lead_id: lead.id,
+        agendado_para: isoDate,
+        motivo: reason,
+        realizado: false,
+        criado_por: 'vendedor',
+      })
+      if (followUpError) throw followUpError
+
+      const { error: leadError } = await supabaseAdmin
+        .from('leads')
+        .update({
+          status: 'follow_up',
+          data_followup_1: isoDate,
+          followup_1_enviado: 'pendente',
+          ultima_atividade: new Date().toISOString(),
+        })
+        .eq('id', lead.id)
+      if (leadError) throw leadError
+
+      await supabaseAdmin.from('interacoes').insert({
+        lead_id: lead.id,
+        tipo: 'nota_vendedor',
+        conteudo: `Follow-up agendado: ${reason}`,
+      })
+
+      setIsScheduleOpen(false)
+      await fetchLeadDetails()
+      if (onUpdate) onUpdate()
+    } catch (error) {
+      console.error('Erro ao agendar follow-up:', error)
+      setBotError(error instanceof Error ? error.message : 'Nao foi possivel agendar o follow-up.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleAddNote = async () => {
+    if (!lead || !noteText.trim()) return
+    setActionLoading(true)
+    setBotError(null)
+    try {
+      const { error } = await supabaseAdmin.from('interacoes').insert({
+        lead_id: lead.id,
+        tipo: 'nota_vendedor',
+        conteudo: noteText.trim(),
+      })
+      if (error) throw error
+      setNoteText('')
+      setIsNoteOpen(false)
+      await fetchLeadDetails()
+    } catch (error) {
+      console.error('Erro ao adicionar nota:', error)
+      setBotError(error instanceof Error ? error.message : 'Nao foi possivel adicionar a nota.')
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -391,10 +459,34 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted">Agendamentos e Follow-ups</h4>
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setIsScheduleOpen((open) => !open)}>
               <Plus size={14} /> Agendar
             </Button>
           </div>
+          {isScheduleOpen && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3">
+                <input
+                  type="datetime-local"
+                  className="rounded-lg border border-border-card bg-bg-card px-3 py-2 text-sm text-text-main outline-none focus:border-primary"
+                  value={scheduleAt}
+                  onChange={(event) => setScheduleAt(event.target.value)}
+                />
+                <input
+                  className="rounded-lg border border-border-card bg-bg-card px-3 py-2 text-sm text-text-main outline-none focus:border-primary"
+                  value={scheduleReason}
+                  onChange={(event) => setScheduleReason(event.target.value)}
+                  placeholder="Motivo do follow-up"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setIsScheduleOpen(false)}>Cancelar</Button>
+                <Button variant="primary" size="sm" onClick={handleCreateFollowUp} disabled={actionLoading}>
+                  {actionLoading ? 'Salvando...' : 'Salvar follow-up'}
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="space-y-3">
             {followUps.length > 0 ? (
               followUps.map((fu) => (
@@ -478,9 +570,25 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
         >
           <Trophy size={16} /> {lead.convertido ? 'Lead Convertido' : 'Marcar Conversão'}
         </Button>
-        <Button variant="ghost" className="col-span-2 mt-1 gap-2 border-dashed border-border-card border">
+        <Button variant="ghost" className="col-span-2 mt-1 gap-2 border-dashed border-border-card border" onClick={() => setIsNoteOpen((open) => !open)}>
           <FileText size={16} /> Adicionar Nota do Vendedor
         </Button>
+        {isNoteOpen && (
+          <div className="col-span-2 space-y-3 rounded-xl border border-border-card bg-bg-base/30 p-4">
+            <textarea
+              className="min-h-24 w-full rounded-lg border border-border-card bg-bg-card px-3 py-2 text-sm text-text-main outline-none focus:border-primary"
+              value={noteText}
+              onChange={(event) => setNoteText(event.target.value)}
+              placeholder="Digite uma nota interna sobre este lead..."
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setIsNoteOpen(false)}>Cancelar</Button>
+              <Button variant="primary" size="sm" onClick={handleAddNote} disabled={actionLoading || !noteText.trim()}>
+                {actionLoading ? 'Salvando...' : 'Salvar nota'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   )

@@ -1,0 +1,10 @@
+project_id = "vptvtmwrxixtrwjvndha"
+
+[functions.api]
+verify_jwt = false
+
+[functions.bot-control]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false

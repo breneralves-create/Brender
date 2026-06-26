@@ -23,29 +23,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authRole, setAuthRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchUserProfile = useCallback(async (id: string) => {
+  const fetchUserProfile = useCallback(async (currentUser: User) => {
     try {
-      const [{ data: profileData, error: profileError }, { data: roleData, error: roleError }] = await Promise.all([
-        supabaseAdmin
-          .from('users')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle(),
-        supabase.rpc('current_user_role')
-      ])
+      const { data: roleData, error: roleError } = await supabase.rpc('current_user_role')
+      const currentRole: UserRole | null = roleData === 'admin' || roleData === 'vendedor' ? roleData : null
+
+      const { data: profileData, error: profileError } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle()
 
       if (profileError) {
-        console.error('Error fetching user profile:', profileError)
-        setUserProfile(null)
+        setUserProfile({
+          id: currentUser.id,
+          email: currentUser.email ?? null,
+          name: typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : null,
+          role: currentRole ?? 'vendedor',
+          created_at: currentUser.created_at,
+        })
       } else {
-        setUserProfile(profileData ?? null)
+        setUserProfile(profileData ?? {
+          id: currentUser.id,
+          email: currentUser.email ?? null,
+          name: typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : null,
+          role: currentRole ?? 'vendedor',
+          created_at: currentUser.created_at,
+        })
       }
 
       if (roleError) {
         console.error('Error fetching user role:', roleError)
         setAuthRole(null)
       } else {
-        const currentRole = roleData === 'admin' || roleData === 'vendedor' ? roleData : null
         setAuthRole(currentRole)
       }
     } catch (error) {
@@ -67,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        void fetchUserProfile(session.user.id)
+        void fetchUserProfile(session.user)
       } else {
         setLoading(false)
       }
@@ -79,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(currentUser)
       if (currentUser) {
         setTimeout(() => {
-          void fetchUserProfile(currentUser.id)
+          void fetchUserProfile(currentUser)
         }, 0)
       } else {
         setUserProfile(null)
@@ -96,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUserProfile = async () => {
     if (user?.id) {
-      await fetchUserProfile(user.id)
+      await fetchUserProfile(user)
     }
   }
 
@@ -106,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user)
     if (data.user) {
       setLoading(true)
-      await fetchUserProfile(data.user.id)
+      await fetchUserProfile(data.user)
     } else {
       setLoading(false)
     }
