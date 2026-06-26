@@ -67,8 +67,6 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
   const [isScheduleOpen, setIsScheduleOpen] = useState(false)
   const [scheduleAt, setScheduleAt] = useState(tomorrowAtNine)
   const [scheduleReason, setScheduleReason] = useState('Retornar com o lead para avancar a negociacao.')
-  const [isNoteOpen, setIsNoteOpen] = useState(false)
-  const [noteText, setNoteText] = useState('')
 
   const fetchLeadDetails = useCallback(async () => {
     if (!lead) return
@@ -102,9 +100,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
       setBotError(null)
       setScheduleAt(tomorrowAtNine())
       setScheduleReason('Retornar com o lead para avancar a negociacao.')
-      setNoteText('')
       setIsScheduleOpen(false)
-      setIsNoteOpen(false)
     }
   }, [fetchLeadDetails, isOpen, lead])
 
@@ -212,28 +208,6 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
     }
   }
 
-  const handleAddNote = async () => {
-    if (!lead || !noteText.trim()) return
-    setActionLoading(true)
-    setBotError(null)
-    try {
-      const { error } = await supabaseAdmin.from('interacoes').insert({
-        lead_id: lead.id,
-        tipo: 'nota_vendedor',
-        conteudo: noteText.trim(),
-      })
-      if (error) throw error
-      setNoteText('')
-      setIsNoteOpen(false)
-      await fetchLeadDetails()
-    } catch (error) {
-      console.error('Erro ao adicionar nota:', error)
-      setBotError(error instanceof Error ? error.message : 'Nao foi possivel adicionar a nota.')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   if (!lead) return null
   const whatsappUrl = buildWhatsAppUrl(lead.whatsapp, lead.nome)
 
@@ -243,10 +217,29 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
       onClose={onClose}
       title={lead.nome || 'Lead sem nome'}
       size="xl"
+      footer={(
+        <>
+          <Button
+            variant="ghost"
+            className="gap-2"
+            onClick={() => { if (lead && onEdit) onEdit(lead) }}
+          >
+            <Edit3 size={16} /> Editar Lead
+          </Button>
+          <Button
+            variant="primary"
+            className="gap-2 min-w-56"
+            disabled={lead.convertido}
+            onClick={handleConversion}
+          >
+            <Trophy size={16} /> {lead.convertido ? 'Lead Convertido' : 'Marcar Conversão'}
+          </Button>
+        </>
+      )}
     >
-      <div className="space-y-8 pb-10">
+      <div className="space-y-5">
         {/* Header Section */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-text-muted flex items-center gap-2 bg-bg-base px-3 py-1.5 rounded-full border border-border-card text-sm font-medium">
               <Phone size={14} />
@@ -273,11 +266,11 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
             type="button"
             onClick={() => openWhatsApp(lead.whatsapp, lead.nome)}
             disabled={!whatsappUrl}
-            className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 px-4 py-3.5 text-left text-[#159447] transition-all hover:border-[#25D366]/50 hover:bg-[#25D366]/15 hover:shadow-[0_10px_30px_rgba(37,211,102,0.12)] disabled:cursor-not-allowed disabled:border-border-card disabled:bg-bg-base/40 disabled:text-text-muted disabled:shadow-none"
+            className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 px-4 py-2.5 text-left text-[#159447] transition-all hover:border-[#25D366]/50 hover:bg-[#25D366]/15 hover:shadow-[0_10px_30px_rgba(37,211,102,0.12)] disabled:cursor-not-allowed disabled:border-border-card disabled:bg-bg-base/40 disabled:text-text-muted disabled:shadow-none"
           >
             <span className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm">
-                <MessageCircle size={21} />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm">
+                <MessageCircle size={19} />
               </span>
               <span>
                 <span className="block text-sm font-bold">Conversar no WhatsApp</span>
@@ -289,7 +282,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
             <ExternalLink size={18} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </button>
           
-          <div className="p-4 bg-bg-base/30 rounded-xl border border-border-card space-y-3">
+          <div className="p-3 bg-bg-base/30 rounded-xl border border-border-card space-y-2">
             <div className="flex justify-between items-center text-sm font-medium text-text-muted">
               <span>Score de Qualificação</span>
               <span className="text-text-main">{lead.score || 0}%</span>
@@ -299,10 +292,10 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
         </div>
 
         {/* Qualification Grid */}
-        <section className="space-y-4">
-          <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted px-1">Qualificação</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-3 bg-bg-base/20 space-y-1">
+        <section className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted px-1">Qualificação</h4>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <Card noPadding className="p-3 bg-bg-base/20 space-y-1">
               <span className="text-[10px] uppercase tracking-tighter text-text-muted">Intenção de Compra</span>
               <div className="flex items-center gap-2">
                 <Badge variant={lead.intencao_compra === 'alta' ? 'success' : 'muted'}>
@@ -310,19 +303,19 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
                 </Badge>
               </div>
             </Card>
-            <Card className="p-3 bg-bg-base/20 space-y-1">
+            <Card noPadding className="p-3 bg-bg-base/20 space-y-1">
               <span className="text-[10px] uppercase tracking-tighter text-text-muted">Urgência</span>
               <div className="text-sm font-semibold capitalize">{lead.urgencia?.replace('_', ' ') || 'N/A'}</div>
             </Card>
-            <Card className="p-3 bg-bg-base/20 col-span-2 space-y-1">
+            <Card noPadding className="p-3 bg-bg-base/20 space-y-1">
               <span className="text-[10px] uppercase tracking-tighter text-text-muted">Produto de Interesse</span>
               <div className="text-sm font-semibold text-primary">{lead.produto_interesse || 'Não informado'}</div>
             </Card>
-            <Card className="p-3 bg-bg-base/20 space-y-1">
+            <Card noPadding className="p-3 bg-bg-base/20 space-y-1">
               <span className="text-[10px] uppercase tracking-tighter text-text-muted">Origem</span>
               <Badge variant="muted" className="text-[10px]">{lead.origem || 'Direto'}</Badge>
             </Card>
-            <Card className="p-3 bg-bg-base/20 space-y-1">
+            <Card noPadding className="p-3 bg-bg-base/20 space-y-1">
               <span className="text-[10px] uppercase tracking-tighter text-text-muted">Cidade</span>
               <div className="text-sm font-semibold flex items-center gap-1">
                 <MapPin size={12} className="text-text-muted" />
@@ -332,13 +325,14 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
           </div>
         </section>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* IA Summary */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted px-1 flex items-center gap-2">
             <Bot size={16} className="text-primary" />
             Resumo da Conversa (IA)
           </h4>
-          <div className="p-5 bg-primary/5 border border-primary/20 rounded-2xl relative overflow-hidden group">
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
             <p className="text-sm text-text-main leading-relaxed italic">
               {lead.resumo_conversa ? `"${lead.resumo_conversa}"` : 'O resumo ainda não foi gerado pela Inteligência Artificial.'}
@@ -354,12 +348,12 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
           )}
         </section>
 
-        <section className="space-y-4">
+        <section className="space-y-3">
           <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted px-1 flex items-center gap-2">
             <Bot size={16} className="text-primary" />
             Controle do Agente IA
           </h4>
-          <div className={`p-5 rounded-xl border flex flex-col gap-4 ${
+          <div className={`p-4 rounded-xl border flex flex-col gap-4 ${
             botAtivo
               ? 'border-primary/30 bg-primary/5'
               : 'border-error/30 bg-error/5'
@@ -411,9 +405,11 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
             )}
           </div>
         </section>
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Encaminhamento */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted px-1">Encaminhamento e Vendas</h4>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-4 bg-bg-base/20 rounded-xl border border-border-card">
@@ -457,7 +453,7 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
         </section>
 
         {/* Follow-up Section */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted">Agendamentos e Follow-ups</h4>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setIsScheduleOpen((open) => !open)}>
@@ -514,15 +510,16 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
             )}
           </div>
         </section>
+        </div>
 
-        {/* Interaction History */}
-        <section className="space-y-4">
-          <h4 className="text-sm font-bold uppercase tracking-widest text-text-muted px-1 flex items-center gap-2">
-            <MessageSquare size={16} />
+        {interactions.length > 0 && (
+        <section className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted px-1 flex items-center gap-2">
+            <MessageSquare size={15} />
             Histórico de Mensagens
           </h4>
-          <div className="space-y-4 bg-bg-base/30 p-4 rounded-2xl border border-border-card max-h-[400px] overflow-y-auto">
-            {interactions.length > 0 ? (
+          <div className="space-y-3 bg-bg-base/30 p-4 rounded-2xl border border-border-card max-h-[260px] overflow-y-auto">
+            {
               interactions.map((msg) => (
                 <div 
                   key={msg.id} 
@@ -545,50 +542,9 @@ export const DrawerLead: React.FC<DrawerLeadProps> = ({
                   </span>
                 </div>
               ))
-            ) : (
-              <div className="text-center py-10 opacity-30">
-                <MessageSquare size={32} className="mx-auto mb-2" />
-                <p className="text-xs">Nenhuma mensagem registrada.</p>
-              </div>
-            )}
+            }
           </div>
         </section>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 mt-4">
-        <Button 
-          variant="ghost" 
-          className="gap-2"
-          onClick={() => { if (lead && onEdit) onEdit(lead) }}
-        >
-          <Edit3 size={16} /> Editar Lead
-        </Button>
-        <Button 
-          variant="primary" 
-          className="gap-2" 
-          disabled={lead.convertido}
-          onClick={handleConversion}
-        >
-          <Trophy size={16} /> {lead.convertido ? 'Lead Convertido' : 'Marcar Conversão'}
-        </Button>
-        <Button variant="ghost" className="col-span-2 mt-1 gap-2 border-dashed border-border-card border" onClick={() => setIsNoteOpen((open) => !open)}>
-          <FileText size={16} /> Adicionar Nota do Vendedor
-        </Button>
-        {isNoteOpen && (
-          <div className="col-span-2 space-y-3 rounded-xl border border-border-card bg-bg-base/30 p-4">
-            <textarea
-              className="min-h-24 w-full rounded-lg border border-border-card bg-bg-card px-3 py-2 text-sm text-text-main outline-none focus:border-primary"
-              value={noteText}
-              onChange={(event) => setNoteText(event.target.value)}
-              placeholder="Digite uma nota interna sobre este lead..."
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setIsNoteOpen(false)}>Cancelar</Button>
-              <Button variant="primary" size="sm" onClick={handleAddNote} disabled={actionLoading || !noteText.trim()}>
-                {actionLoading ? 'Salvando...' : 'Salvar nota'}
-              </Button>
-            </div>
-          </div>
         )}
       </div>
     </Modal>
