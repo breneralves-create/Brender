@@ -10,7 +10,9 @@ import {
   Snowflake,
   CheckCircle2,
   Trash2,
-  MessageCircle
+  MessageCircle,
+  Bot,
+  BotOff
 } from 'lucide-react'
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { supabase, supabaseAdmin } from '../lib/supabase'
@@ -395,6 +397,7 @@ export const Leads: React.FC = () => {
                     <div className="flex items-center gap-2">Temperatura <ArrowUpDown size={12} /></div>
                   </th>
                   <th className="px-6 py-4">Encaminhado</th>
+                  <th className="px-6 py-4 text-center">IA</th>
                   <th className="px-6 py-4 cursor-pointer hover:text-[#00C48C] transition-colors" onClick={() => toggleSort('created_at')}>
                     <div className="flex items-center gap-2">Data Contato <ArrowUpDown size={12} /></div>
                   </th>
@@ -456,6 +459,21 @@ export const Leads: React.FC = () => {
                           </div>
                         ) : (
                           <span className="text-text-muted opacity-40">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        {lead.bot_ativo === false ? (
+                          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#F9D589] bg-[#FEF9EC] px-2.5 py-1 text-[10px] font-bold uppercase text-[#B7770D]">
+                            <BotOff size={12} />
+                            Agente pausada
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#00C48C]/20 bg-[#00C48C]/10 px-2.5 py-1 text-[10px] font-bold uppercase text-[#00A878]">
+                            <Bot size={12} />
+                            Ativa
+                          </div>
                         )}
                       </div>
                     </td>
